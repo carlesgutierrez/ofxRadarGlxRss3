@@ -1,2 +1,2 @@
 # ofxRadarGlxRss3
-Read tracking data of this Radar speed sensor
+Read tracking data from Radar speed sensor GLX RSS3 150CS
