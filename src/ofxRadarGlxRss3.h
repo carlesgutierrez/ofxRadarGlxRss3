@@ -7,6 +7,7 @@
 #include "ofxCsv.h"
 
 #define RECONNECTING_TIME 5000
+#define READABLE_FRAMERATE 200
 
 struct targetData {
 	int64_t id;
@@ -21,13 +22,22 @@ public:
 	ofxRadarGlxRss3();
     void setup();
 	void update();
+	void updateOnlineRadarData();
     void draw();
-	ofxJSONElement json;
+	ofxJSONElement jsonRadar;
+	ofxJSONElement jsonRecordingRadar;
+	ofxJSONElement jsonSimulationRadar;
 	bool parsingSuccessful = false;
 
+	void startPlaying();
+	bool isPlaying();
+	bool isRecording();
+	void startRecorging();
+	void stopRecorging();
 	
 	void setupRadar();
 
+private:
 	//Area Radar
 	void defineIdealRadarArea();
 	ofPolyline radarAreaEffective;
@@ -43,7 +53,8 @@ public:
 	ofVec2f transformPolarToCartesian(float _distance, float _angleDegree);
 
 	void readJsonDataRadar();
-	void parseJsonDataRadar();
+	void parseJsonDataRadar();//Radar
+	void parseJsonDataRadar(ofxJSONElement jsonRadar);//SimulationRadar
 
 
 	int timerReader = 0;
@@ -64,13 +75,19 @@ public:
 	int angleMaxRadar = 40;
 
 	//Save Load Simulation
+	bool bSimulationMode = false;
+	//write
 	void updateRecording();
-	void startRecorging();
-	void stopRecorging();
 	bool bRecording = false;
 	bool bStartRecording = false;
 	int framesRecorded = 0;
-	ofxCsv myCsvData;
+	//read
+	bool bPlaying = false;
+	bool bStartPlaying= false;
+	ofxJSONElement readingSimulationRadar();
+	int counterFramesSimulation = 0;
+	int totalFramesSimulation = 0;
+
 
 };
 

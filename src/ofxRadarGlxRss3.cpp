@@ -39,14 +39,30 @@ void ofxRadarGlxRss3::setupRadar() {
 //------------------------------------------------
 void ofxRadarGlxRss3::update() {
 
+	if (bPlaying) {
+		//Playing Simulation data if its available
+		if (ofGetElapsedTimeMillis() - timerReader > READABLE_FRAMERATE) {
+			readJsonDataRadar();
+			timerReader = ofGetElapsedTimeMillis();
+			radarPolarToCartesian();
+		}
+	}
+	else {
+		//Trying to get Json Data from Server 192.168.1.x
+		updateOnlineRadarData();
+	}
+
+	
+
+}
+
+void ofxRadarGlxRss3::updateOnlineRadarData() {
 	if (parsingSuccessful)
 	{
 		//readJSon data
-		if (ofGetElapsedTimeMillis() - timerReader > 200) {
+		if (ofGetElapsedTimeMillis() - timerReader > READABLE_FRAMERATE) {
 			readJsonDataRadar();
 			timerReader = ofGetElapsedTimeMillis();
-			//cout << "Reading" << endl;
-
 			radarPolarToCartesian();
 
 			if (bRecording)updateRecording();
@@ -60,21 +76,38 @@ void ofxRadarGlxRss3::update() {
 			timerReader = ofGetElapsedTimeMillis();
 		}
 	}
-
 }
 
 //------------------------------------------------
 void ofxRadarGlxRss3::parseJsonDataRadar() {
 	// Now parse the JSON
-	parsingSuccessful = json.open(url);
+	parsingSuccessful = jsonRadar.open(url);
 
 	if (parsingSuccessful)
 	{
-		ofLogNotice("ofxRadarGlxRss3::setup") << json.getRawString(true);
+		ofLogNotice("ofxRadarGlxRss3::setup") << jsonRadar.getRawString(true);
 	}
 	else {
 		ofLogNotice("ofxRadarGlxRss3::setup") << "Failed to parse JSON.";
 	}
+}
+
+//------------------------------------------------
+void ofxRadarGlxRss3::parseJsonDataRadar(ofxJSONElement _jsonRadar) {
+	// Auto parsed success
+	parsingSuccessful = true;
+
+	jsonRadar.clear(); //Clear last frame datat
+	jsonRadar = _jsonRadar; //Save the new one
+
+	/*
+	if (parsingSuccessful)
+	{
+		ofLogNotice("ofxRadarGlxRss3::setup") << jsonRadar.getRawString(true);
+	}
+	else {
+		ofLogNotice("ofxRadarGlxRss3::setup") << "Failed to parse JSON.";
+	}*/
 }
 
 //------------------------------------------------
@@ -83,20 +116,26 @@ void ofxRadarGlxRss3::readJsonDataRadar() {
 	//Auto clean if no new data
 	targetsData.clear();
 
-	parseJsonDataRadar();
+	//Filll TargetsData with onlin
+	if (bPlaying) {//TODO Set bSimulationMode
+		parseJsonDataRadar(readingSimulationRadar());
+	}
+	else {
+		parseJsonDataRadar();
+	}
 
-	if (json["targets"].size() > 0) {
+	if (jsonRadar["targets"].size() > 0) {
 		
-		targetsData.reserve(json["targets"].size());
+		targetsData.reserve(jsonRadar["targets"].size());
 
-		for (Json::ArrayIndex i = 0; i < json["targets"].size(); ++i){
+		for (Json::ArrayIndex i = 0; i < jsonRadar["targets"].size(); ++i){
 			
 			targetData auxTarget;
-			auxTarget.id = json["targets"][i]["id"].asInt64();
-			auxTarget.distance = json["targets"][i]["distance"].asInt();
-			auxTarget.angleDegree = json["targets"][i]["angle"].asInt();
-			auxTarget.speedKm = json["targets"][i]["speed"].asInt();
-			auxTarget.strength = json["targets"][i]["strength"].asInt();
+			auxTarget.id = jsonRadar["targets"][i]["id"].asInt64();
+			auxTarget.distance = jsonRadar["targets"][i]["distance"].asInt();
+			auxTarget.angleDegree = jsonRadar["targets"][i]["angle"].asInt();
+			auxTarget.speedKm = jsonRadar["targets"][i]["speed"].asInt();
+			auxTarget.strength = jsonRadar["targets"][i]["strength"].asInt();
 			
 			targetsData.push_back(auxTarget);
 		}
@@ -104,9 +143,9 @@ void ofxRadarGlxRss3::readJsonDataRadar() {
 
 	//Any way this is always visible and should update timeStamp value properly ( try to find optimized frameRate reading )
 
-	int timestamp = json["timestamp"].asInt();
-	std::string json_units = json["json_units"].asString();
-	std::string ui_units = json["ui_units"].asString();
+	int timestamp = jsonRadar["timestamp"].asInt();
+	std::string json_units = jsonRadar["json_units"].asString();
+	std::string ui_units = jsonRadar["ui_units"].asString();
 	textStatusRadar = "TimeStamp[" + ofToString(timestamp, 0) + "] - json_units[" + json_units + "] - ui_units[" + ui_units + "]";
 		
 
@@ -212,24 +251,30 @@ void ofxRadarGlxRss3::drawRawTextRadarDetection() {
 
 //-----------------------------------------------
 void ofxRadarGlxRss3::drawRawTextRadarInfo() {
+
 	ofSetColor(ofColor::green);
 	//Draw Basic Info
 	ofDrawBitmapString(textStatusRadar, 20, 20);
 
 	ofSetColor(ofColor::red);
 	//Draw Resumed Blob Data
-	ofDrawBitmapString(stargetResumedData = "Num targets= " + ofToString(json["targets"].size(), 0), 20, 40);
+	ofDrawBitmapString(stargetResumedData = "Num targets= " + ofToString(jsonRadar["targets"].size(), 0), 20, 40);
 
 	//Some extra info
 	ofSetColor(ofColor::whiteSmoke);
 	//ofDrawBitmapString("ofGetElapsedTimef =" + ofToString(ofGetElapsedTimef(), 4), 500, 30);
 	ofDrawBitmapString("Framerate =" + ofToString(ofGetFrameRate(),2), 500, 30);
+
 	ofSetColor(ofColor::red);
 		
 	// Show the current mouse recording state
 	if(bRecording){
 		ofDrawBitmapString("Csv Recording", 500, 100);
 		ofDrawBitmapString("Num rows: " + ofToString(framesRecorded), 500, 120);
+	}
+	else if (bPlaying) {
+		ofDrawBitmapString("Num FramesSimulation = " +ofToString(counterFramesSimulation, 0) , 500, 100);
+		ofDrawBitmapString("Total Frames available = " + ofToString(jsonSimulationRadar.size(), 0), 500, 120);
 	}
 
 	
@@ -295,42 +340,16 @@ void ofxRadarGlxRss3::updateRecording() {
 	if (bRecording) {
 
 		/*
-		targetsData[i].id //Save Id (int)
-		targetsData[i].distance //Cartesian// Save posx  (int) //Save posy (int)
-		targetsData[i].angleDegree
-		targetsData[i].speedKm //Save Vel (int)
-		targetsData[i].strength //Save Strengh (int)
+		//When has no targets:
+		{"targets":[],"timestamp":1412,"json_units":"kmh","ui_units":"kmh"}
+		//When has targets:
+		{"targets":[{"id":137693,"distance":35.7982,"angle":15.8591,"speed":-0.55,"strength":1.06788e+07}],"timestamp":1595,"json_units":"kmh","ui_units":"kmh"}
 		*/
 
+		ofxJSONElement saverBlobJS;
+		saverBlobJS = jsonRadar;
 
-		//Saving ActualFrame or timeStamp (string) or EllapsedTimef should work
-		//all blobs are saved for the same Frame, using different rows.
-
-		
-		for (int i = 0; i < targetsData.size(); i++) {
-			ofxCsvRow row;
-			int iterRow = 0;
-
-			row.setInt(iterRow, ofGetFrameNum()); //Just to detect how many frames between each saved value. Then can be reproduced easy as X frammes per second too
-			iterRow++;
-			row.setInt(iterRow, targetsData[i].id);
-			iterRow++;
-			row.setInt(iterRow, cartesianRadar[i].x);
-			iterRow++;
-			row.setInt(iterRow, cartesianRadar[i].y);
-			iterRow++;
-			row.setInt(iterRow, targetsData[i].speedKm);
-			iterRow++;
-			row.setInt(iterRow, targetsData[i].strength);
-			iterRow++;
-			
-			myCsvData.addRow(row); // add to the end
-			framesRecorded++;
-		}
-
-
-		//myCsvData.
-
+		jsonRecordingRadar.append(saverBlobJS);
 	}
 
 }
@@ -341,14 +360,13 @@ void ofxRadarGlxRss3::startRecorging() {
 	if (!bStartRecording) {
 		bStartRecording = true;
 
-		myCsvData.createFile("createfile.csv");
+		jsonRecordingRadar.clear();
 		framesRecorded = 0;
 		bRecording = true;
 	}
 	else {
 		cout << "Error action. Was already Reconding. Stop Recording fisrt, press t" << endl;
 	}
-
 	
 }
 
@@ -356,7 +374,7 @@ void ofxRadarGlxRss3::startRecorging() {
 void ofxRadarGlxRss3::stopRecorging() {
 
 	if (bRecording) {
-		myCsvData.save("radar_" + ofGetTimestampString()+".csv");
+		jsonRecordingRadar.save("radar_" + ofGetTimestampString()+".json", false); //true for readable or False for faster
 		bRecording = false;
 		bStartRecording = false;
 	}
@@ -368,4 +386,66 @@ void ofxRadarGlxRss3::stopRecorging() {
 	}
 
 
+}
+
+//-------------------------------------------------------
+void ofxRadarGlxRss3::startPlaying() {
+	//jsonRecordingRadar.
+
+	if (bPlaying) {
+		//Do nothing
+	}
+	else if (bStartRecording || bRecording) {
+		bStartPlaying = false;
+		bPlaying = false;
+	}
+	else {
+		//!bPlaying case
+		if (!bStartPlaying) {
+			//open Json File //TODO load others files dynimically
+			jsonSimulationRadar.clear();
+			bool bOpen = jsonSimulationRadar.openLocal("radar.json");
+			if (bOpen) {
+				bStartPlaying = true;
+				bPlaying = true;
+				//Save Total Frames to do loop over this ones
+				totalFramesSimulation = jsonSimulationRadar.size();
+			}
+			else {
+				cout << "startPlaying:: Error opening Simulation radar.json" << endl;
+			}
+			
+		}
+		
+	}
+}
+
+//-------------------------------------------------------
+//Forcing easy sequencial reading
+ofxJSONElement ofxRadarGlxRss3::readingSimulationRadar() {
+
+	ofxJSONElement auxReadFrame;
+
+	if (counterFramesSimulation > totalFramesSimulation) {
+		counterFramesSimulation = 0;
+	}
+	else {
+		counterFramesSimulation++;
+	}
+
+	auxReadFrame = jsonSimulationRadar[counterFramesSimulation];
+
+	cout << "My new Simulation Frame is " << auxReadFrame << endl;
+	
+	return auxReadFrame;
+}
+
+//-------------------------------------------------------
+bool ofxRadarGlxRss3::isPlaying() {
+	return bPlaying;
+}
+
+//-------------------------------------------------------
+bool ofxRadarGlxRss3::isRecording() {
+	return bRecording;
 }
