@@ -27,7 +27,6 @@ public:
 	ofxJSONElement jsonRadar;
 	ofxJSONElement jsonRecordingRadar;
 	ofxJSONElement jsonSimulationRadar;
-	bool parsingSuccessful = false;
 
 	void startPlaying();
 	bool isPlaying();
@@ -37,7 +36,13 @@ public:
 	
 	void setupRadar();
 
+	void playSimFile(int _idPosFileInFolder);
+	int getNumSimFiles();
+
 private:
+
+	bool parsingSuccessful = false;
+
 	//Area Radar
 	void defineIdealRadarArea();
 	ofPolyline radarAreaEffective;
@@ -75,7 +80,8 @@ private:
 	int angleMaxRadar = 40;
 
 	//Save Load Simulation
-	bool bSimulationMode = false;
+	string fileName = "default.json";
+
 	//write
 	void updateRecording();
 	bool bRecording = false;
@@ -87,6 +93,11 @@ private:
 	ofxJSONElement readingSimulationRadar();
 	int counterFramesSimulation = 0;
 	int totalFramesSimulation = 0;
+
+	ofDirectory myDataFolder;
+	int idActualSimulatorIter = 0;
+
+
 
 
 };

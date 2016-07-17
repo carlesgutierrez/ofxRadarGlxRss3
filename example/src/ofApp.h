@@ -23,4 +23,5 @@ class ofApp : public ofBaseApp{
 		void gotMessage(ofMessage msg);
 		
 		ofxRadarGlxRss3 myRadar;
+		int idSimulaTorFile = 0;
 };

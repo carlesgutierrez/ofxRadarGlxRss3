@@ -100,14 +100,6 @@ void ofxRadarGlxRss3::parseJsonDataRadar(ofxJSONElement _jsonRadar) {
 	jsonRadar.clear(); //Clear last frame datat
 	jsonRadar = _jsonRadar; //Save the new one
 
-	/*
-	if (parsingSuccessful)
-	{
-		ofLogNotice("ofxRadarGlxRss3::setup") << jsonRadar.getRawString(true);
-	}
-	else {
-		ofLogNotice("ofxRadarGlxRss3::setup") << "Failed to parse JSON.";
-	}*/
 }
 
 //------------------------------------------------
@@ -269,10 +261,10 @@ void ofxRadarGlxRss3::drawRawTextRadarInfo() {
 		
 	// Show the current mouse recording state
 	if(bRecording){
-		ofDrawBitmapString("Csv Recording", 500, 100);
-		ofDrawBitmapString("Num rows: " + ofToString(framesRecorded), 500, 120);
+		ofDrawBitmapString("Recording Radar", 500, 100);
 	}
 	else if (bPlaying) {
+		ofDrawBitmapString("Playing OffLine Radar "+ fileName, 500, 80);
 		ofDrawBitmapString("Num FramesSimulation = " +ofToString(counterFramesSimulation, 0) , 500, 100);
 		ofDrawBitmapString("Total Frames available = " + ofToString(jsonSimulationRadar.size(), 0), 500, 120);
 	}
@@ -393,7 +385,9 @@ void ofxRadarGlxRss3::startPlaying() {
 	//jsonRecordingRadar.
 
 	if (bPlaying) {
-		//Do nothing
+		//Cameback To Radar
+		bPlaying = false;
+		bStartPlaying = false;
 	}
 	else if (bStartRecording || bRecording) {
 		bStartPlaying = false;
@@ -402,9 +396,9 @@ void ofxRadarGlxRss3::startPlaying() {
 	else {
 		//!bPlaying case
 		if (!bStartPlaying) {
-			//open Json File //TODO load others files dynimically
+			counterFramesSimulation = 0;
 			jsonSimulationRadar.clear();
-			bool bOpen = jsonSimulationRadar.openLocal("radar.json");
+			bool bOpen = jsonSimulationRadar.openLocal(fileName);
 			if (bOpen) {
 				bStartPlaying = true;
 				bPlaying = true;
@@ -449,3 +443,30 @@ bool ofxRadarGlxRss3::isPlaying() {
 bool ofxRadarGlxRss3::isRecording() {
 	return bRecording;
 }
+
+//------------------------------------------------------
+void ofxRadarGlxRss3::playSimFile(int _idPosFileInFolder) {
+	myDataFolder.listDir("");
+	myDataFolder.sort();
+
+	if (_idPosFileInFolder < myDataFolder.size() && _idPosFileInFolder > -1) {
+		idActualSimulatorIter = _idPosFileInFolder;
+		fileName = myDataFolder.getPath(idActualSimulatorIter);
+		startPlaying();
+	}
+	
+}
+
+//------------------------------------------------------
+int ofxRadarGlxRss3::getNumSimFiles() {
+	myDataFolder.listDir("");
+	myDataFolder.sort(); // in linux the file system doesn't return file lists ordered in alphabetical order
+
+	//allocate the vector to have as many ofImages as files
+	return myDataFolder.size();
+}
+
+
+//
+//Map Strengt Into Out Circle Size no Fill
+//Map velocity into Variables

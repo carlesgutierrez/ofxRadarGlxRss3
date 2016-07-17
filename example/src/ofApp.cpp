@@ -25,6 +25,21 @@ void ofApp::keyPressed(int key){
 void ofApp::keyReleased(int key){
 	if (key == 'r')myRadar.startRecorging();
 	else if(key == 't')myRadar.stopRecorging();
+	else if (key == 'p') {
+		myRadar.startPlaying();
+	}
+	else if (key == '+') {
+		idSimulaTorFile++;
+		if(idSimulaTorFile < myRadar.getNumSimFiles()){
+			myRadar.playSimFile(idSimulaTorFile);
+		}
+		else {
+			idSimulaTorFile = 0;
+			myRadar.playSimFile(idSimulaTorFile);
+		}
+		
+	}
+	
 }
 
 //--------------------------------------------------------------
