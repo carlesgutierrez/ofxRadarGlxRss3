@@ -35,10 +35,10 @@ void ofApp::keyReleased(int key){
 		myRadar.startPlaying();
 	}
 	else if (key == OF_KEY_RIGHT) {
-		playNextSimFile();
+		myRadar.playNextSimFile();
 	}
 	else if (key == OF_KEY_LEFT) {
-		playPrevSimFile();
+		myRadar.playPrevSimFile();
 	}
 	
 }

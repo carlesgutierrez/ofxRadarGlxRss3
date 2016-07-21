@@ -9,6 +9,19 @@
 #define RECONNECTING_TIME 5000
 #define READABLE_FRAMERATE 200
 
+struct processedData {
+	int64_t id;
+	ofVec2f pos;
+	ofVec2f vel;
+	int strength;
+};
+
+struct resumedTrackingData {
+	ofRectangle trackingRegion;
+	float density; //Density = NumberOfTargets*(sizeByUser or streght target) / (AreaTrackWidth + AreaTrackHeight) 
+	float average_vel;//average_vel = Sum(VelTargets[N])/N then ofMap(ResumedVelocity , -30, 30, 0, 1, )
+};
+
 struct targetData {
 	int64_t id;
 	int distance;
@@ -35,18 +48,22 @@ public:
 	void stopRecorging();
 	
 	void setupRadar();
-
 	void playSimFile(int _idPosFileInFolder);
 	int getNumSimFiles();
-
 	targetData getTargetData(int idTarget);
 	ofPoint getCartesianTargetData(int idTarget);
-
 	float sensorScale = 2;
+
+	processedData radarPostData;
+	resumedTrackingData resumedPostData;
+	void playNextSimFile();
+	void playPrevSimFile();
 
 private:
 
 	bool parsingSuccessful = false;
+	void updateRadar();
+	void updateResumedData();
 
 	//Area Radar
 	void defineIdealRadarArea();
@@ -54,6 +71,9 @@ private:
 	void drawIdealAreaTracking(int x, int y);
 
 	//Tracking Info
+	void drawSmallHorizontalLine(int _x, int _y);
+	void drawSmallVerticalLine(int _x, int _y);
+	void drawRadarCross(int _x, int _y);
 	void drawRawTextRadarInfo();
 	void drawRawTextRadarDetection();
 	void drawBlobsCartesian(int x, int y);
@@ -92,8 +112,6 @@ private:
 	bool bStartRecording = false;
 	int framesRecorded = 0;
 	//read
-	void playNextSimFile();
-	void playPrevSimFile();
 	int idSimulaTorFile = 0;
 	bool bPlaying = false;
 	bool bStartPlaying= false;

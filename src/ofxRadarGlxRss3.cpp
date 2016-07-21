@@ -7,7 +7,7 @@ ofxRadarGlxRss3::ofxRadarGlxRss3()
 //------------------------------------------------
 void ofxRadarGlxRss3::setup()
 {
-    url = "http://192.168.1.120/scan_radars";
+	url = "http://192.168.1.120/scan_radars";
 
 	timerReader = ofGetElapsedTimeMillis();
 
@@ -22,7 +22,7 @@ void ofxRadarGlxRss3::setup()
 
 //------------------------------------------------
 void ofxRadarGlxRss3::setupRadar() {
-	sensorMaxDistance = 100;
+	sensorMaxDistance = 150; //TODO program from from JSON Data Value
 	angleMaxRadar = 80;//Seems that now can be 80. But only 40 effectively-
 	cout << "Radar Accurate Angle is = " << angleMaxRadar*0.5 << " but the maximum angle detection is " << angleMaxRadar << endl;
 	ofVec2f posYMaxAccurateAngle = transformPolarToCartesian(sensorMaxDistance, angleMaxRadar*0.25);
@@ -32,6 +32,9 @@ void ofxRadarGlxRss3::setupRadar() {
 	sensorAccurateHeight = posYMaxAccurateAngle.y * 2; // posYMaxAccurateAngle is only half upper of the radar
 	sensorWidth = sensorMaxDistance;
 
+	//Setup Tracking Region
+	resumedPostData.trackingRegion.set(0, 0, sensorWidth, sensorHeight);
+
 	defineIdealRadarArea();
 
 	ofSetCircleResolution(40);
@@ -39,34 +42,49 @@ void ofxRadarGlxRss3::setupRadar() {
 }
 
 //------------------------------------------------
-void ofxRadarGlxRss3::update() {
+void ofxRadarGlxRss3::updateResumedData() {
 
-	if (bPlaying) {
-		//Playing Simulation data if its available
-		if (ofGetElapsedTimeMillis() - timerReader > READABLE_FRAMERATE) {
-			readJsonDataRadar();
-			timerReader = ofGetElapsedTimeMillis();
-			radarPolarToCartesian();
-		}
-	}
-	else {
-		//Trying to get Json Data from Server 192.168.1.x
-		updateOnlineRadarData();
-	}
+	//calc vel average
 
-	
+	//Transform Cartesian Pos to Local Area pos
+
+	//Cacl Velocity in Vector (prev frame vs actal frame) 
+
+	//Transform Cartesian Vel to Local Area pos
+
+
 
 }
 
+//------------------------------------------------
+void ofxRadarGlxRss3::updateRadar() {
+	readJsonDataRadar();
+	radarPolarToCartesian();
+	updateResumedData();
+}
+
+//------------------------------------------------
+void ofxRadarGlxRss3::update() {
+
+	if (bPlaying) {
+		if (ofGetElapsedTimeMillis() - timerReader > READABLE_FRAMERATE) {
+			//will playing Simulation data if its available
+			updateRadar();
+			timerReader = ofGetElapsedTimeMillis();
+		}
+	}
+	else {
+		//Different timings here if trying to connect not successful
+		updateOnlineRadarData();
+	}
+}
+
 void ofxRadarGlxRss3::updateOnlineRadarData() {
-	if (parsingSuccessful)
-	{
+	if (parsingSuccessful) {
 		//readJSon data
 		if (ofGetElapsedTimeMillis() - timerReader > READABLE_FRAMERATE) {
-			readJsonDataRadar();
+			updateRadar();
 			timerReader = ofGetElapsedTimeMillis();
-			radarPolarToCartesian();
-
 			if (bRecording)updateRecording();
 		}
 	}
@@ -119,18 +137,18 @@ void ofxRadarGlxRss3::readJsonDataRadar() {
 	}
 
 	if (jsonRadar["targets"].size() > 0) {
-		
+
 		targetsData.reserve(jsonRadar["targets"].size());
 
-		for (Json::ArrayIndex i = 0; i < jsonRadar["targets"].size(); ++i){
-			
+		for (Json::ArrayIndex i = 0; i < jsonRadar["targets"].size(); ++i) {
+
 			targetData auxTarget;
 			auxTarget.id = jsonRadar["targets"][i]["id"].asInt64();
 			auxTarget.distance = jsonRadar["targets"][i]["distance"].asInt();
 			auxTarget.angleDegree = jsonRadar["targets"][i]["angle"].asInt();
 			auxTarget.speedKm = jsonRadar["targets"][i]["speed"].asInt();
 			auxTarget.strength = jsonRadar["targets"][i]["strength"].asInt();
-			
+
 			targetsData.push_back(auxTarget);
 		}
 	}
@@ -141,30 +159,89 @@ void ofxRadarGlxRss3::readJsonDataRadar() {
 	std::string json_units = jsonRadar["json_units"].asString();
 	std::string ui_units = jsonRadar["ui_units"].asString();
 	textStatusRadar = "TimeStamp[" + ofToString(timestamp, 0) + "] - json_units[" + json_units + "] - ui_units[" + ui_units + "]";
-		
+
 
 
 }
 
 //------------------------------------------------
+void ofxRadarGlxRss3::drawSmallHorizontalLine(int _x, int _y) {
+
+	int ls = 5;
+
+	ofPushMatrix();
+	ofTranslate(_x, _y);
+	ofDrawLine(-ls, 0, ls, 0); //Horizontal
+	ofPopMatrix();
+}
+
+//------------------------------------------------
+void ofxRadarGlxRss3::drawSmallVerticalLine(int _x, int _y) {
+	
+	int ls = 5;
+	
+	ofPushMatrix();
+	ofTranslate(_x, _y);
+	ofDrawLine(0, -ls, 0, ls); //Vertical
+	ofPopMatrix();
+}
+
+//------------------------------------------------
+void ofxRadarGlxRss3::drawRadarCross(int _x, int _y) {
+	
+	float detailCross = 10;
+	//float segments = sensorAccurateHeight sensorMaxDistance / detailCross;
+	
+	
+	ofSetColor(ofColor::navajoWhite);
+	ofPushMatrix();
+	ofTranslate(_x, _y);
+	ofScale(sensorScale, sensorScale, 0);
+
+	ofSetColor(ofColor::darkRed);
+	ofDrawLine(-sensorWidth*0.5, 0, sensorWidth*0.5, 0); // Horizontal Line Cross
+	ofDrawLine(0, -sensorHeight*0.5, 0, sensorHeight*0.5); // Vertical Line Cross
+
+	ofSetColor(ofColor::white);
+	//Cross detail distances in horizontal Line
+	for (int i = 0; i < detailCross; i++) {
+		float xdetailH = 0;
+		int ydetailH = ofMap(i, 0, detailCross, -sensorAccurateHeight*0.5, sensorAccurateHeight*0.5);
+		drawSmallHorizontalLine(xdetailH, ydetailH);
+	}
+	//Cross detail distances in Vertical Line
+	for (int i = 0; i < detailCross; i++) {
+		
+		float xdetailV = ofMap(i, 0, detailCross, -sensorWidth*0.5, sensorWidth*0.5);
+		int ydetailV = 0;
+		drawSmallVerticalLine(xdetailV, ydetailV);
+	}
+
+	ofPopMatrix();
+}
+
+//------------------------------------------------
 void ofxRadarGlxRss3::draw()
 {
-  
 	ofSetColor(ofColor::white);
+	//ofDrawLine(ofGetWidth()*0.5, 0, ofGetWidth()*0.5, ofGetHeight()); // Vertical Line Cross
+	//ofDrawLine(0, ofGetHeight()*0.5, ofGetWidth(), ofGetHeight()*0.5); // Horizontal Line Cross
 
-	if (parsingSuccessful){
+	drawRadarCross(ofGetWidth()*0.5, ofGetHeight()*0.5);
+
+	if (parsingSuccessful) {
 
 		drawRawTextRadarInfo();
 		drawRawTextRadarDetection();
 
-		drawIdealAreaTracking(ofGetWidth()*0.5, ofGetHeight()*0.75);
-		drawBlobsCartesian(ofGetWidth()*0.5, ofGetHeight()*0.75);
+		drawIdealAreaTracking(ofGetWidth()*0.5 - sensorWidth*0.5, ofGetHeight()*0.5 - sensorHeight*0.5);
+		drawBlobsCartesian(ofGetWidth()*0.5 - sensorWidth*0.5, ofGetHeight()*0.5 - sensorHeight*0.5);
 
 	}
 	else {
 		ofDrawBitmapString("Parsing not succsefull. Reconnecting in " + ofToString(RECONNECTING_TIME - (ofGetElapsedTimeMillis() - timerReader), 0), 20, 40);
 	}
-	
+
 }
 
 
@@ -182,21 +259,23 @@ void ofxRadarGlxRss3::defineIdealRadarArea() {
 	radarAreaEffective.addVertex(DownArc);
 	radarAreaEffective.close();
 
-		//polylines[polylinesIndex].addVertex(ofPoint(args.x - imageRecognitionPosition.x, args.y - imageRecognitionPosition.y));
+	//polylines[polylinesIndex].addVertex(ofPoint(args.x - imageRecognitionPosition.x, args.y - imageRecognitionPosition.y));
 }
 
 //---------------------------------------------
 void ofxRadarGlxRss3::drawIdealAreaTracking(int _x, int _y) {
 	ofPushMatrix();
-	ofTranslate(_x+sensorMaxDistance*0.5, _y+ sensorHeight*0.5, 0);
+
+	//ofTranslate(_x, _y, 0);
+	ofTranslate(_x + sensorMaxDistance*0.5, _y + sensorHeight*0.5, 0);
 	ofScale(sensorScale, sensorScale, 0);
 	ofTranslate(-sensorMaxDistance*0.5, -sensorHeight*0.5, 0);
 
 	ofNoFill();
-	
+
 	ofSetColor(ofColor::orangeRed);
 	ofDrawRectangle(0, 0, sensorMaxDistance, sensorHeight);
-	
+
 	ofSetColor(ofColor::yellow);
 	ofDrawRectangle(0, sensorHeight*0.5 - sensorAccurateHeight*0.5, sensorMaxDistance, sensorAccurateHeight);
 
@@ -208,10 +287,11 @@ void ofxRadarGlxRss3::drawIdealAreaTracking(int _x, int _y) {
 
 //---------------------------------------------
 void ofxRadarGlxRss3::drawBlobsCartesian(int _x, int _y) {
-	
+
 	ofPushStyle();
 	ofPushMatrix();
 	ofTranslate(_x + sensorMaxDistance*0.5, _y + sensorHeight*0.5, 0);
+	//ofTranslate(_x, _y, 0);
 	ofScale(sensorScale, sensorScale, 0);
 	ofTranslate(-sensorMaxDistance*0.5, -sensorHeight*0.5, 0);
 
@@ -220,7 +300,7 @@ void ofxRadarGlxRss3::drawBlobsCartesian(int _x, int _y) {
 	ofEnableAlphaBlending();
 	ofSetColor(myBlobColor.r, myBlobColor.g, myBlobColor.b, 200);
 	for (int i = 0; i < cartesianRadar.size(); i++) {
-		
+
 		ofDrawCircle(cartesianRadar[i].x, cartesianRadar[i].y, 5);
 
 		//Map Strengt Into Out Circle Size no Fill
@@ -230,8 +310,8 @@ void ofxRadarGlxRss3::drawBlobsCartesian(int _x, int _y) {
 		ofDrawCircle(cartesianRadar[i].x, cartesianRadar[i].y, strengCircleDim);
 
 		ofSetColor(ofColor::white);
-		ofDrawBitmapString("x="+ofToString(cartesianRadar[i].x, 0), cartesianRadar[i].x+2, cartesianRadar[i].y+0);
-		ofDrawBitmapString("y="+ofToString(cartesianRadar[i].y, 0), cartesianRadar[i].x+2, cartesianRadar[i].y+5);
+		ofDrawBitmapString("x=" + ofToString(cartesianRadar[i].x, 0), cartesianRadar[i].x + 2, cartesianRadar[i].y + 0);
+		ofDrawBitmapString("y=" + ofToString(cartesianRadar[i].y, 0), cartesianRadar[i].x + 2, cartesianRadar[i].y + 5);
 		ofDrawBitmapString("id=" + ofToString(targetsData[i].id, 0), cartesianRadar[i].x + 2, cartesianRadar[i].y + 10);
 	}
 	ofDisableAlphaBlending();
@@ -274,23 +354,24 @@ void ofxRadarGlxRss3::drawRawTextRadarInfo() {
 	////////////////////////////////////////////////
 	//Some extra info
 	ofSetColor(ofColor::whiteSmoke);
-	ofDrawBitmapString("Framerate =" + ofToString(ofGetFrameRate(),2), marginRight, 30);
+	ofDrawBitmapString("Scaling =" + ofToString(sensorScale, 2), marginRight, 10);
+	ofDrawBitmapString("Framerate =" + ofToString(ofGetFrameRate(), 2), marginRight, 30);
 
 	ofSetColor(ofColor::red);
-		
+
 	// Show the current mouse recording state
-	if(bRecording){
-		ofDrawBitmapString("Recording Radar.. Frame #"+ofToString(framesRecorded, 0), marginRight, 100);
+	if (bRecording) {
+		ofDrawBitmapString("Recording Radar.. Frame #" + ofToString(framesRecorded, 0), marginRight, 100);
 	}
 	else if (bPlaying) {
-		ofDrawBitmapString("Playing OffLine Radar "+ fileName, marginRight, 80);
-		ofDrawBitmapString("Num FramesSimulation = " +ofToString(counterFramesSimulation, 0) , marginRight, 100);
+		ofDrawBitmapString("Playing OffLine Radar " + fileName, marginRight, 80);
+		ofDrawBitmapString("Num FramesSimulation = " + ofToString(counterFramesSimulation, 0), marginRight, 100);
 		ofDrawBitmapString("Total Frames available = " + ofToString(jsonSimulationRadar.size(), 0), marginRight, 120);
 		ofDrawBitmapString("Press RightArrow for Next", marginRight, 150);
-		ofDrawBitmapString("Press LeftArrow for Previous", marginRight, 150);
+		ofDrawBitmapString("Press LeftArrow for Previous", marginRight, 170);
 	}
 
-	
+
 
 }
 
@@ -301,7 +382,7 @@ void ofxRadarGlxRss3::radarPolarToCartesian() {
 	cartesianRadar.reserve(targetsData.size());
 
 	for (int i = 0; i < targetsData.size(); i++) {
-		
+
 		ofVec2f auxpoint = transformPolarToCartesian(targetsData[i].distance, targetsData[i].angleDegree);
 		cartesianRadar.push_back(auxpoint);
 	}
@@ -322,15 +403,15 @@ ofVec2f ofxRadarGlxRss3::transformPolarToCartesian(float _distance, float _angle
 		auxY = _distance * sin(degreeRad);
 
 		//Then apply Radar adaptation ( positive angle )
-		auxY = - auxY + sensorHeight*0.5;
-		
+		auxY = -auxY + sensorHeight*0.5;
+
 
 		//cout << "cartesian x = " << auxX << " from _distance= " << _distance << " and positive angle=" << _angleDegree << endl;
 		//cout << "cartesian y = " << auxY << " from _distance= " << _distance << " and positive angle=" << _angleDegree << endl;
 
-}
+	}
 	else {
-		
+
 		float degreeRad = ofDegToRad(abs(_angleDegree));
 
 		auxX = _distance * cos(degreeRad);
@@ -342,7 +423,7 @@ ofVec2f ofxRadarGlxRss3::transformPolarToCartesian(float _distance, float _angle
 		//cout << "cartesian x = " << auxX << " from _distance= " << _distance << " and negative angle= -" << _angleDegree << endl;
 		//cout << "cartesian y = " << auxY << " from _distance= " << _distance << " and negative angle= -" << _angleDegree << endl;
 	}
-	
+
 	return ofVec2f(auxX, auxY);
 
 }
@@ -380,14 +461,14 @@ void ofxRadarGlxRss3::startRecorging() {
 	else {
 		cout << "Error action. Was already Reconding. Stop Recording fisrt, press t" << endl;
 	}
-	
+
 }
 
 //-------------------------------------------------------
 void ofxRadarGlxRss3::stopRecorging() {
 
 	if (bRecording) {
-		jsonRecordingRadar.save("radar_" + ofGetTimestampString()+".json", false); //true for readable or False for faster
+		jsonRecordingRadar.save("radar_" + ofGetTimestampString() + ".json", false); //true for readable or False for faster
 		bRecording = false;
 		bStartRecording = false;
 	}
@@ -429,9 +510,9 @@ void ofxRadarGlxRss3::startPlaying() {
 			else {
 				cout << "startPlaying:: Error opening Simulation radar.json" << endl;
 			}
-			
+
 		}
-		
+
 	}
 }
 
@@ -451,7 +532,7 @@ ofxJSONElement ofxRadarGlxRss3::readingSimulationRadar() {
 	auxReadFrame = jsonSimulationRadar[counterFramesSimulation];
 
 	cout << "My new Simulation Frame is " << auxReadFrame << endl;
-	
+
 	return auxReadFrame;
 }
 
@@ -473,14 +554,14 @@ void ofxRadarGlxRss3::playSimFile(int _idPosFileInFolder) {
 	if (_idPosFileInFolder < myDataFolder.size() && _idPosFileInFolder > -1) {
 		idActualSimulatorIter = _idPosFileInFolder;
 		fileName = myDataFolder.getPath(idActualSimulatorIter);
-		
+
 		//resetPlayer vars
 		bPlaying = false;
 		bStartPlaying = false;
 
 		startPlaying();
 	}
-	
+
 }
 
 //------------------------------------------------------
