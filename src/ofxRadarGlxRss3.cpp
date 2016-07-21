@@ -280,12 +280,14 @@ void ofxRadarGlxRss3::drawRawTextRadarInfo() {
 		
 	// Show the current mouse recording state
 	if(bRecording){
-		ofDrawBitmapString("Recording Radar", marginRight, 100);
+		ofDrawBitmapString("Recording Radar.. Frame #"+ofToString(framesRecorded, 0), marginRight, 100);
 	}
 	else if (bPlaying) {
 		ofDrawBitmapString("Playing OffLine Radar "+ fileName, marginRight, 80);
 		ofDrawBitmapString("Num FramesSimulation = " +ofToString(counterFramesSimulation, 0) , marginRight, 100);
 		ofDrawBitmapString("Total Frames available = " + ofToString(jsonSimulationRadar.size(), 0), marginRight, 120);
+		ofDrawBitmapString("Press RightArrow for Next", marginRight, 150);
+		ofDrawBitmapString("Press LeftArrow for Previous", marginRight, 150);
 	}
 
 	
@@ -471,9 +473,40 @@ void ofxRadarGlxRss3::playSimFile(int _idPosFileInFolder) {
 	if (_idPosFileInFolder < myDataFolder.size() && _idPosFileInFolder > -1) {
 		idActualSimulatorIter = _idPosFileInFolder;
 		fileName = myDataFolder.getPath(idActualSimulatorIter);
+		
+		//resetPlayer vars
+		bPlaying = false;
+		bStartPlaying = false;
+
 		startPlaying();
 	}
 	
+}
+
+//------------------------------------------------------
+void ofxRadarGlxRss3::playNextSimFile() {
+
+	idSimulaTorFile++;
+	if (idSimulaTorFile < getNumSimFiles()) {
+		playSimFile(idSimulaTorFile);
+	}
+	else {
+		idSimulaTorFile = 0;
+		playSimFile(idSimulaTorFile);
+	}
+}
+
+//------------------------------------------------------
+void ofxRadarGlxRss3::playPrevSimFile() {
+
+	idSimulaTorFile--;
+	if (idSimulaTorFile > 0) {
+		playSimFile(idSimulaTorFile);
+	}
+	else {
+		idSimulaTorFile = getNumSimFiles();
+		playSimFile(idSimulaTorFile);
+	}
 }
 
 //------------------------------------------------------

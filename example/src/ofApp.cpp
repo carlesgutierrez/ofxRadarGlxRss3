@@ -35,15 +35,10 @@ void ofApp::keyReleased(int key){
 		myRadar.startPlaying();
 	}
 	else if (key == OF_KEY_RIGHT) {
-		idSimulaTorFile++;
-		if(idSimulaTorFile < myRadar.getNumSimFiles()){
-			myRadar.playSimFile(idSimulaTorFile);
-		}
-		else {
-			idSimulaTorFile = 0;
-			myRadar.playSimFile(idSimulaTorFile);
-		}
-		
+		playNextSimFile();
+	}
+	else if (key == OF_KEY_LEFT) {
+		playPrevSimFile();
 	}
 	
 }

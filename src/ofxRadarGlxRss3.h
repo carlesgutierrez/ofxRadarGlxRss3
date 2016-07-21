@@ -92,6 +92,9 @@ private:
 	bool bStartRecording = false;
 	int framesRecorded = 0;
 	//read
+	void playNextSimFile();
+	void playPrevSimFile();
+	int idSimulaTorFile = 0;
 	bool bPlaying = false;
 	bool bStartPlaying= false;
 	ofxJSONElement readingSimulationRadar();
