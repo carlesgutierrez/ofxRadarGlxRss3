@@ -39,6 +39,11 @@ public:
 	void playSimFile(int _idPosFileInFolder);
 	int getNumSimFiles();
 
+	targetData getTargetData(int idTarget);
+	ofPoint getCartesianTargetData(int idTarget);
+
+	float sensorScale = 2;
+
 private:
 
 	bool parsingSuccessful = false;
@@ -70,7 +75,6 @@ private:
 	std::string stargetResumedData;
 
 	//Radar Related Data
-	float sensorScale = 2;
 	float sensorMaxDistance = 0;
 
 	float sensorHeight = 0;

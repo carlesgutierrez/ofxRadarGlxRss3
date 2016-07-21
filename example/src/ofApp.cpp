@@ -18,7 +18,13 @@ void ofApp::draw(){
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
-
+	
+	if (key == '+') {
+		myRadar.sensorScale += 0.1;
+	}
+	else if (key == '-') {
+		myRadar.sensorScale -= 0.1;
+	}
 }
 
 //--------------------------------------------------------------
@@ -28,7 +34,7 @@ void ofApp::keyReleased(int key){
 	else if (key == 'p') {
 		myRadar.startPlaying();
 	}
-	else if (key == '+') {
+	else if (key == OF_KEY_RIGHT) {
 		idSimulaTorFile++;
 		if(idSimulaTorFile < myRadar.getNumSimFiles()){
 			myRadar.playSimFile(idSimulaTorFile);

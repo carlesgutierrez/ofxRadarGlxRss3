@@ -34,6 +34,8 @@ void ofxRadarGlxRss3::setupRadar() {
 
 	defineIdealRadarArea();
 
+	ofSetCircleResolution(40);
+
 }
 
 //------------------------------------------------
@@ -186,8 +188,9 @@ void ofxRadarGlxRss3::defineIdealRadarArea() {
 //---------------------------------------------
 void ofxRadarGlxRss3::drawIdealAreaTracking(int _x, int _y) {
 	ofPushMatrix();
-	ofTranslate(_x, _y, 0);
+	ofTranslate(_x+sensorMaxDistance*0.5, _y+ sensorHeight*0.5, 0);
 	ofScale(sensorScale, sensorScale, 0);
+	ofTranslate(-sensorMaxDistance*0.5, -sensorHeight*0.5, 0);
 
 	ofNoFill();
 	
@@ -205,22 +208,35 @@ void ofxRadarGlxRss3::drawIdealAreaTracking(int _x, int _y) {
 
 //---------------------------------------------
 void ofxRadarGlxRss3::drawBlobsCartesian(int _x, int _y) {
-
+	
+	ofPushStyle();
 	ofPushMatrix();
-	ofTranslate(_x, _y, 0);
+	ofTranslate(_x + sensorMaxDistance*0.5, _y + sensorHeight*0.5, 0);
 	ofScale(sensorScale, sensorScale, 0);
+	ofTranslate(-sensorMaxDistance*0.5, -sensorHeight*0.5, 0);
 
 	ofFill();
 	ofColor myBlobColor = ofColor::mediumVioletRed;
 	ofEnableAlphaBlending();
 	ofSetColor(myBlobColor.r, myBlobColor.g, myBlobColor.b, 200);
 	for (int i = 0; i < cartesianRadar.size(); i++) {
+		
 		ofDrawCircle(cartesianRadar[i].x, cartesianRadar[i].y, 5);
+
+		//Map Strengt Into Out Circle Size no Fill
+		ofNoFill();
+		float strengCircleDim = ofMap(targetsData[i].strength, 2000000, 20000000, 2, 13, true);
+		ofSetColor(ofColor::paleVioletRed);
+		ofDrawCircle(cartesianRadar[i].x, cartesianRadar[i].y, strengCircleDim);
+
+		ofSetColor(ofColor::white);
 		ofDrawBitmapString("x="+ofToString(cartesianRadar[i].x, 0), cartesianRadar[i].x+2, cartesianRadar[i].y+0);
 		ofDrawBitmapString("y="+ofToString(cartesianRadar[i].y, 0), cartesianRadar[i].x+2, cartesianRadar[i].y+5);
+		ofDrawBitmapString("id=" + ofToString(targetsData[i].id, 0), cartesianRadar[i].x + 2, cartesianRadar[i].y + 10);
 	}
 	ofDisableAlphaBlending();
 	ofPopMatrix();
+	ofPopStyle();
 }
 
 //---------------------------------------------
@@ -244,29 +260,32 @@ void ofxRadarGlxRss3::drawRawTextRadarDetection() {
 //-----------------------------------------------
 void ofxRadarGlxRss3::drawRawTextRadarInfo() {
 
+	int marginRight = ofGetWidth() - 300;
+	int marginLeft = 20;
+	////////////////////////////////////////////////
 	ofSetColor(ofColor::green);
 	//Draw Basic Info
-	ofDrawBitmapString(textStatusRadar, 20, 20);
+	ofDrawBitmapString(textStatusRadar, marginLeft, 20);
 
 	ofSetColor(ofColor::red);
 	//Draw Resumed Blob Data
-	ofDrawBitmapString(stargetResumedData = "Num targets= " + ofToString(jsonRadar["targets"].size(), 0), 20, 40);
+	ofDrawBitmapString(stargetResumedData = "Num targets= " + ofToString(jsonRadar["targets"].size(), 0), marginLeft, 40);
 
+	////////////////////////////////////////////////
 	//Some extra info
 	ofSetColor(ofColor::whiteSmoke);
-	//ofDrawBitmapString("ofGetElapsedTimef =" + ofToString(ofGetElapsedTimef(), 4), 500, 30);
-	ofDrawBitmapString("Framerate =" + ofToString(ofGetFrameRate(),2), 500, 30);
+	ofDrawBitmapString("Framerate =" + ofToString(ofGetFrameRate(),2), marginRight, 30);
 
 	ofSetColor(ofColor::red);
 		
 	// Show the current mouse recording state
 	if(bRecording){
-		ofDrawBitmapString("Recording Radar", 500, 100);
+		ofDrawBitmapString("Recording Radar", marginRight, 100);
 	}
 	else if (bPlaying) {
-		ofDrawBitmapString("Playing OffLine Radar "+ fileName, 500, 80);
-		ofDrawBitmapString("Num FramesSimulation = " +ofToString(counterFramesSimulation, 0) , 500, 100);
-		ofDrawBitmapString("Total Frames available = " + ofToString(jsonSimulationRadar.size(), 0), 500, 120);
+		ofDrawBitmapString("Playing OffLine Radar "+ fileName, marginRight, 80);
+		ofDrawBitmapString("Num FramesSimulation = " +ofToString(counterFramesSimulation, 0) , marginRight, 100);
+		ofDrawBitmapString("Total Frames available = " + ofToString(jsonSimulationRadar.size(), 0), marginRight, 120);
 	}
 
 	
@@ -466,7 +485,17 @@ int ofxRadarGlxRss3::getNumSimFiles() {
 	return myDataFolder.size();
 }
 
+//------------------------------------------------------
+targetData ofxRadarGlxRss3::getTargetData(int _idTarget) {
+	return targetsData[_idTarget];
+}
 
-//
-//Map Strengt Into Out Circle Size no Fill
+//------------------------------------------------------
+ofPoint ofxRadarGlxRss3::getCartesianTargetData(int _idTarget) {
+	return cartesianRadar[_idTarget];
+}
+
+//TODOS
+
 //Map velocity into Variables
+
