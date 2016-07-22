@@ -44,15 +44,20 @@ void ofxRadarGlxRss3::setupRadar() {
 //------------------------------------------------
 void ofxRadarGlxRss3::updateResumedData() {
 
-	//calc vel average
+	radarPostData.clear();
+	radarPostData.reserve(targetsData.size());
 
-	//Transform Cartesian Pos to Local Area pos
+	for (int i = 0; i < targetsData.size(); i++) {
+		processedData newProcessedData;
+		newProcessedData.id = targetsData[i].id;
+		newProcessedData.pos = cartesianRadar[i];
 
-	//Cacl Velocity in Vector (prev frame vs actal frame) 
+		//Vel is de direction vector = lasLoc - loc;
+		newProcessedData.vel = cartesianRadar[i] - last_cartesianRadar[i];
+		newProcessedData.strength = targetsData[i].strength;
 
-	//Transform Cartesian Vel to Local Area pos
-
-
+		radarPostData.push_back(newProcessedData);
+	}
 
 }
 
@@ -60,7 +65,7 @@ void ofxRadarGlxRss3::updateResumedData() {
 void ofxRadarGlxRss3::updateRadar() {
 	readJsonDataRadar();
 	radarPolarToCartesian();
-	updateResumedData();
+	if(last_cartesianRadar.size() >0)updateResumedData();
 }
 
 //------------------------------------------------
@@ -291,7 +296,6 @@ void ofxRadarGlxRss3::drawBlobsCartesian(int _x, int _y) {
 	ofPushStyle();
 	ofPushMatrix();
 	ofTranslate(_x + sensorMaxDistance*0.5, _y + sensorHeight*0.5, 0);
-	//ofTranslate(_x, _y, 0);
 	ofScale(sensorScale, sensorScale, 0);
 	ofTranslate(-sensorMaxDistance*0.5, -sensorHeight*0.5, 0);
 
@@ -301,6 +305,13 @@ void ofxRadarGlxRss3::drawBlobsCartesian(int _x, int _y) {
 	ofSetColor(myBlobColor.r, myBlobColor.g, myBlobColor.b, 200);
 	for (int i = 0; i < cartesianRadar.size(); i++) {
 
+		//Draw Vel Vect
+		if (radarPostData.size() > 0) {
+			ofSetColor(ofColor::blueSteel);
+			ofDrawLine(cartesianRadar[i], cartesianRadar[i]+radarPostData[i].vel*sensorScale);
+		}
+
+		ofSetColor(ofColor::deepSkyBlue);
 		ofDrawCircle(cartesianRadar[i].x, cartesianRadar[i].y, 5);
 
 		//Map Strengt Into Out Circle Size no Fill
@@ -377,6 +388,15 @@ void ofxRadarGlxRss3::drawRawTextRadarInfo() {
 
 //-----------------------------------------------
 void ofxRadarGlxRss3::radarPolarToCartesian() {
+
+	//Mem last Frame
+	last_cartesianRadar.clear();
+	last_cartesianRadar.reserve(targetsData.size());
+	//update values
+	for (int i = 0; i < cartesianRadar.size(); i++) {
+		last_cartesianRadar.push_back(cartesianRadar[i]);
+	}
+
 	//Auto Clean cartesian if there is no new targetsData
 	cartesianRadar.clear();
 	cartesianRadar.reserve(targetsData.size());

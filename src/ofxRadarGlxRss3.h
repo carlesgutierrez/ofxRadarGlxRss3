@@ -4,7 +4,6 @@
 
 #include "ofMain.h"
 #include "ofxJSON.h"
-#include "ofxCsv.h"
 
 #define RECONNECTING_TIME 5000
 #define READABLE_FRAMERATE 200
@@ -52,9 +51,9 @@ public:
 	int getNumSimFiles();
 	targetData getTargetData(int idTarget);
 	ofPoint getCartesianTargetData(int idTarget);
-	float sensorScale = 2;
+	float sensorScale = 7.5;
 
-	processedData radarPostData;
+	vector<processedData> radarPostData;
 	resumedTrackingData resumedPostData;
 	void playNextSimFile();
 	void playPrevSimFile();
@@ -79,7 +78,7 @@ private:
 	void drawBlobsCartesian(int x, int y);
 
 	void radarPolarToCartesian();
-	vector<ofVec2f> cartesianRadar;
+	vector<ofVec2f> cartesianRadar, last_cartesianRadar;
 	ofVec2f transformPolarToCartesian(float _distance, float _angleDegree);
 
 	void readJsonDataRadar();
