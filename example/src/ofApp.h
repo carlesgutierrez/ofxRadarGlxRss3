@@ -2,6 +2,7 @@
 
 #include "ofMain.h"
 #include "ofxRadarGlxRss3.h"
+#include "ofxImGui.h"
 
 class ofApp : public ofBaseApp{
 
@@ -24,4 +25,6 @@ class ofApp : public ofBaseApp{
 		
 		ofxRadarGlxRss3 myRadar;
 		int idSimulaTorFile = 0;
+
+		ofxImGui myGui;
 };

@@ -1,1 +1,3 @@
+ofxImGui
+ofxJSON
 ofxRadarGlxRss3
