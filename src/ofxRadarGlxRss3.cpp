@@ -5,15 +5,13 @@ ofxRadarGlxRss3::ofxRadarGlxRss3()
 }
 
 //------------------------------------------------
-void ofxRadarGlxRss3::setup()
+void ofxRadarGlxRss3::setup(string _ip)
 {
-	url = "http://192.168.1.120/scan_radars";
-
 	timerReader = ofGetElapsedTimeMillis();
 
 	ofLogVerbose(OF_LOG_SILENT);
 
-	setupRadar();
+	setupRadar(_ip);
 
 	//TODO Set a theme
 	ofSetBackgroundColor(50, 50, 50);
@@ -21,21 +19,50 @@ void ofxRadarGlxRss3::setup()
 }
 
 //------------------------------------------------
-void ofxRadarGlxRss3::setupRadar() {
+void ofxRadarGlxRss3::setupRadar(string _ip) {
+
+	ipRadar = _ip;
+	url = "http://"+ipRadar+"/scan_radars";
+
 	sensorMaxDistance = 150; //TODO program from from JSON Data Value
-	angleMaxRadar = 80;//Seems that now can be 80. But only 40 effectively-
-	cout << "Radar Accurate Angle is = " << angleMaxRadar*0.5 << " but the maximum angle detection is " << angleMaxRadar << endl;
-	ofVec2f posYMaxAccurateAngle = transformPolarToCartesian(sensorMaxDistance, angleMaxRadar*0.25);
-	ofVec2f posYMaximumAngle = transformPolarToCartesian(sensorMaxDistance, angleMaxRadar);
+	angleMaxRangeRadar = 80;//Seems that now can be 80. But only 40 effectively-
+	cout << "Radar Accurate Angle is = " << angleMaxRangeRadar*0.5 << " but the maximum angle detection is " << angleMaxRangeRadar << endl;
+	
+	//First Calc Max Values From Radar setup values
+	float auxX;
+	float auxY;
+	float degreeRad = ofDegToRad(angleMaxRangeRadar*0.25);
+	auxX = sensorMaxDistance * cos(degreeRad);
+	auxY = sensorMaxDistance * sin(degreeRad);
+
+	float auxX2;
+	float auxY2;
+	float degreeRad2 = ofDegToRad(angleMaxRangeRadar*0.5);
+	auxX2 = sensorMaxDistance * cos(degreeRad2);
+	auxY2 = sensorMaxDistance * sin(degreeRad2);
+	
+	ofVec2f posYMaxAccurateAngle = ofVec2f(auxX, auxY);
+	ofVec2f posYMaximumAngle = ofVec2f(auxX2, auxY2);
+
+	//ofVec2f posYMaxAccurateAngle = transformPolarToCartesian(sensorMaxDistance, angleMaxRangeRadar*0.25);
+	//ofVec2f posYMaximumAngle = transformPolarToCartesian(sensorMaxDistance, angleMaxRangeRadar*0.5);
 
 	sensorHeight = posYMaximumAngle.y * 2; // posYMaximumAngle is only half upper of the radar 
 	sensorAccurateHeight = posYMaxAccurateAngle.y * 2; // posYMaxAccurateAngle is only half upper of the radar
 	sensorWidth = sensorMaxDistance;
 
 	//Setup Tracking Region
-	resumedPostData.trackingRegion.set(0, 0, sensorWidth, sensorHeight);
+	vector<ofPoint> quadRadar;
+	quadRadar.push_back(ofPoint(0, 0));
+	quadRadar.push_back(ofPoint(sensorWidth, 0));
+	quadRadar.push_back(ofPoint(sensorWidth, sensorHeight));
+	quadRadar.push_back(ofPoint(0,  sensorHeight));
+
+	resumedPostData.trackingRegion = ofPolyline(quadRadar);
+	//Rect set(-sensorWidth*0.5, -sensorHeight*0.5, sensorWidth, sensorHeight);
 
 	defineIdealRadarArea();
+	defineRadarArea();
 
 	ofSetCircleResolution(40);
 
@@ -52,9 +79,13 @@ void ofxRadarGlxRss3::updateResumedData() {
 		newProcessedData.id = targetsData[i].id;
 		newProcessedData.pos = cartesianRadar[i];
 
-		//Vel is de direction vector = lasLoc - loc;
-		newProcessedData.vel = cartesianRadar[i] - last_cartesianRadar[i];
+		//Vel is de direction vector = lasLoc - loc; 
+		if (last_cartesianRadar.size() > 0 && cartesianRadar.size() > 0) {
+			newProcessedData.vel = cartesianRadar[i] - last_cartesianRadar[i];
+		}
 		newProcessedData.strength = targetsData[i].strength;
+
+		newProcessedData.speedKm = targetsData[i].speedKm;
 
 		radarPostData.push_back(newProcessedData);
 	}
@@ -229,8 +260,6 @@ void ofxRadarGlxRss3::drawRadarCross(int _x, int _y) {
 void ofxRadarGlxRss3::draw()
 {
 	ofSetColor(ofColor::white);
-	//ofDrawLine(ofGetWidth()*0.5, 0, ofGetWidth()*0.5, ofGetHeight()); // Vertical Line Cross
-	//ofDrawLine(0, ofGetHeight()*0.5, ofGetWidth(), ofGetHeight()*0.5); // Horizontal Line Cross
 
 	drawRadarCross(ofGetWidth()*0.5, ofGetHeight()*0.5);
 
@@ -238,9 +267,10 @@ void ofxRadarGlxRss3::draw()
 
 		drawRawTextRadarInfo();
 		drawRawTextRadarDetection();
-
+		
 		drawIdealAreaTracking(ofGetWidth()*0.5 - sensorWidth*0.5, ofGetHeight()*0.5 - sensorHeight*0.5);
 		drawBlobsCartesian(ofGetWidth()*0.5 - sensorWidth*0.5, ofGetHeight()*0.5 - sensorHeight*0.5);
+		drawResumedPostData(ofGetWidth()*0.5 - sensorWidth*0.5, ofGetHeight()*0.5 - sensorHeight*0.5);
 
 	}
 	else {
@@ -249,14 +279,30 @@ void ofxRadarGlxRss3::draw()
 
 }
 
+//---------------------------------------------
+void ofxRadarGlxRss3::defineRadarArea() {
+
+	ofPoint cornerPoint = ofPoint(0, sensorHeight*0.5);
+
+	ofVec2f UpArc = transformPolarToCartesian(sensorMaxDistance, angleMaxRangeRadar*0.5);
+	ofVec2f DownArc = transformPolarToCartesian(sensorMaxDistance, -angleMaxRangeRadar*0.5);
+
+
+	radarArea.addVertex(cornerPoint);
+	radarArea.addVertex(UpArc);
+	radarArea.addVertex(DownArc);
+	radarArea.close();
+
+	//polylines[polylinesIndex].addVertex(ofPoint(args.x - imageRecognitionPosition.x, args.y - imageRecognitionPosition.y));
+}
 
 //---------------------------------------------
 void ofxRadarGlxRss3::defineIdealRadarArea() {
 
 	ofPoint cornerPoint = ofPoint(0, sensorHeight*0.5);
 
-	ofVec2f UpArc = transformPolarToCartesian(sensorMaxDistance, angleMaxRadar*0.25);
-	ofVec2f DownArc = transformPolarToCartesian(sensorMaxDistance, -angleMaxRadar*0.25);
+	ofVec2f UpArc = transformPolarToCartesian(sensorMaxDistance, angleMaxRangeRadar*0.25);
+	ofVec2f DownArc = transformPolarToCartesian(sensorMaxDistance, -angleMaxRangeRadar*0.25);
 
 
 	radarAreaEffective.addVertex(cornerPoint);
@@ -284,10 +330,49 @@ void ofxRadarGlxRss3::drawIdealAreaTracking(int _x, int _y) {
 	ofSetColor(ofColor::yellow);
 	ofDrawRectangle(0, sensorHeight*0.5 - sensorAccurateHeight*0.5, sensorMaxDistance, sensorAccurateHeight);
 
+	ofSetColor(ofColor::darkSeaGreen);
+	radarArea.draw();
 
-	ofSetColor(ofColor::forestGreen);
+	ofSetColor(ofColor::darkOliveGreen);
 	radarAreaEffective.draw();
+	
+
 	ofPopMatrix();
+}
+
+//-----------------------------------------------
+void ofxRadarGlxRss3::drawResumedPostData(int _x, int _y) {
+	
+	vector<ofPoint> ptsTrackingArea = resumedPostData.trackingRegion.getVertices();
+
+	//For now we play with a simple QUAD 
+	if (ptsTrackingArea.size() == 4) {
+
+		ofPoint topLeft = ptsTrackingArea[0];
+		ofPoint topRight = ptsTrackingArea[1];//ptsTrackingArea.trackingRegion.getTopRight();
+		ofPoint bottomRight = ptsTrackingArea[2];//resumedPostData.trackingRegion.getBottomRight();
+		ofPoint bottomLeft = ptsTrackingArea[3];//resumedPostData.trackingRegion.getBottomLeft();
+
+
+		ofPushStyle();
+		ofPushMatrix();
+		ofTranslate(_x - topRight.x, _y - bottomLeft.y, 0);
+		//ofTranslate(_x, _y, 0);
+		ofScale(sensorScale, sensorScale, 0);
+		ofTranslate(+topRight.x, +bottomLeft.y, 0);
+
+		ofSetColor(ofColor::limeGreen);
+		ofNoFill();
+		ofDrawCircle(topLeft, CIRCLE_CORNERS_TRACKINGAREA);
+		ofDrawCircle(topRight, CIRCLE_CORNERS_TRACKINGAREA);
+		ofDrawCircle(bottomLeft, CIRCLE_CORNERS_TRACKINGAREA);
+		ofDrawCircle(bottomRight, CIRCLE_CORNERS_TRACKINGAREA);
+
+		ofPopMatrix();
+		ofPopStyle();
+
+	}
+	
 }
 
 //---------------------------------------------
@@ -303,27 +388,29 @@ void ofxRadarGlxRss3::drawBlobsCartesian(int _x, int _y) {
 	ofColor myBlobColor = ofColor::mediumVioletRed;
 	ofEnableAlphaBlending();
 	ofSetColor(myBlobColor.r, myBlobColor.g, myBlobColor.b, 200);
-	for (int i = 0; i < cartesianRadar.size(); i++) {
+	for (int i = 0; i < radarPostData.size(); i++) {
 
 		//Draw Vel Vect
 		if (radarPostData.size() > 0) {
 			ofSetColor(ofColor::blueSteel);
-			ofDrawLine(cartesianRadar[i], cartesianRadar[i]+radarPostData[i].vel*sensorScale);
+			ofDrawLine(radarPostData[i].pos, radarPostData[i].pos+radarPostData[i].vel*sensorScale); //Seems this is right engouh
 		}
 
 		ofSetColor(ofColor::deepSkyBlue);
-		ofDrawCircle(cartesianRadar[i].x, cartesianRadar[i].y, 5);
+		ofDrawCircle(radarPostData[i].pos.x, radarPostData[i].pos.y, 5);
 
 		//Map Strengt Into Out Circle Size no Fill
 		ofNoFill();
-		float strengCircleDim = ofMap(targetsData[i].strength, 2000000, 20000000, 2, 13, true);
+		float strengCircleDim = ofMap(radarPostData[i].strength, MIN_STRENGHT_DETECTED, MAX_STRENGHT_DETECTED, MIN_CIRCLE_STRENGHT_BLOB_SIZE, MAX_CIRCLE_STRENGHT_BLOB_SIZE, true);
 		ofSetColor(ofColor::paleVioletRed);
-		ofDrawCircle(cartesianRadar[i].x, cartesianRadar[i].y, strengCircleDim);
+		ofDrawCircle(radarPostData[i].pos.x, radarPostData[i].pos.y, strengCircleDim);
 
 		ofSetColor(ofColor::white);
-		ofDrawBitmapString("x=" + ofToString(cartesianRadar[i].x, 0), cartesianRadar[i].x + 2, cartesianRadar[i].y + 0);
-		ofDrawBitmapString("y=" + ofToString(cartesianRadar[i].y, 0), cartesianRadar[i].x + 2, cartesianRadar[i].y + 5);
-		ofDrawBitmapString("id=" + ofToString(targetsData[i].id, 0), cartesianRadar[i].x + 2, cartesianRadar[i].y + 10);
+		ofDrawBitmapString("x=" + ofToString(radarPostData[i].pos.x, 0), radarPostData[i].pos.x + 2, radarPostData[i].pos.y + 0);
+		ofDrawBitmapString("y=" + ofToString(radarPostData[i].pos.y, 0), radarPostData[i].pos.x + 2, radarPostData[i].pos.y + 5);
+		ofDrawBitmapString("id=" + ofToString(radarPostData[i].id, 0), radarPostData[i].pos.x + 2, radarPostData[i].pos.y + 10);
+		ofDrawBitmapString("id=" + ofToString(radarPostData[i].speedKm, 0), radarPostData[i].pos.x + 2, radarPostData[i].pos.y + 10);
+		
 	}
 	ofDisableAlphaBlending();
 	ofPopMatrix();
@@ -416,39 +503,20 @@ ofVec2f ofxRadarGlxRss3::transformPolarToCartesian(float _distance, float _angle
 	float auxX;
 	float auxY;
 
-	if (_angleDegree > 0) {
-		float degreeRad = ofDegToRad(abs(_angleDegree));
+		float degreeRad = ofDegToRad(_angleDegree);
 
 		auxX = _distance * cos(degreeRad);
 		auxY = _distance * sin(degreeRad);
 
-		//Then apply Radar adaptation ( positive angle )
-		auxY = -auxY + sensorHeight*0.5;
-
-
-		//cout << "cartesian x = " << auxX << " from _distance= " << _distance << " and positive angle=" << _angleDegree << endl;
-		//cout << "cartesian y = " << auxY << " from _distance= " << _distance << " and positive angle=" << _angleDegree << endl;
-
-	}
-	else {
-
-		float degreeRad = ofDegToRad(abs(_angleDegree));
-
-		auxX = _distance * cos(degreeRad);
-		auxY = _distance * sin(degreeRad);
-
-		//Then apply Radar adaptation ( negative angle )
-		auxY = auxY + sensorHeight * 0.5;
-
-		//cout << "cartesian x = " << auxX << " from _distance= " << _distance << " and negative angle= -" << _angleDegree << endl;
-		//cout << "cartesian y = " << auxY << " from _distance= " << _distance << " and negative angle= -" << _angleDegree << endl;
-	}
+		//Then apply point Radar adaptation ( positive angle )
+		auxY = auxY + sensorHeight*0.5;
 
 	return ofVec2f(auxX, auxY);
-
 }
 
 //-------------------------------------------------------
+//RECORDER
+
 void ofxRadarGlxRss3::updateRecording() {
 
 	if (bRecording) {
@@ -503,6 +571,8 @@ void ofxRadarGlxRss3::stopRecorging() {
 }
 
 //-------------------------------------------------------
+//PLAYER
+
 void ofxRadarGlxRss3::startPlaying() {
 	//jsonRecordingRadar.
 
@@ -537,7 +607,6 @@ void ofxRadarGlxRss3::startPlaying() {
 }
 
 //-------------------------------------------------------
-//Forcing easy sequencial reading
 ofxJSONElement ofxRadarGlxRss3::readingSimulationRadar() {
 
 	ofxJSONElement auxReadFrame;
@@ -567,6 +636,13 @@ bool ofxRadarGlxRss3::isRecording() {
 }
 
 //------------------------------------------------------
+void ofxRadarGlxRss3::resetAllTargetVars() {
+	targetsData.clear();
+	radarPostData.clear();
+	cartesianRadar.clear();
+	last_cartesianRadar.clear();
+}
+//------------------------------------------------------
 void ofxRadarGlxRss3::playSimFile(int _idPosFileInFolder) {
 	myDataFolder.listDir("");
 	myDataFolder.sort();
@@ -580,6 +656,8 @@ void ofxRadarGlxRss3::playSimFile(int _idPosFileInFolder) {
 		bStartPlaying = false;
 
 		startPlaying();
+
+		resetAllTargetVars();
 	}
 
 }
@@ -610,6 +688,8 @@ void ofxRadarGlxRss3::playPrevSimFile() {
 	}
 }
 
+
+//GETTERS
 //------------------------------------------------------
 int ofxRadarGlxRss3::getNumSimFiles() {
 	myDataFolder.listDir("");
@@ -629,7 +709,45 @@ ofPoint ofxRadarGlxRss3::getCartesianTargetData(int _idTarget) {
 	return cartesianRadar[_idTarget];
 }
 
-//TODOS
+//------------------------------------------------------
+float ofxRadarGlxRss3::getRadarWidth() {
+	return sensorWidth;
+}
+//------------------------------------------------------
+float ofxRadarGlxRss3::getRadarHeight() {
+	return sensorHeight;
+}
+//------------------------------------------------------
+float ofxRadarGlxRss3::getRadarAccurateHeight() {
+	return sensorAccurateHeight;
+}
+//------------------------------------------------------
+float ofxRadarGlxRss3::getRadarMaxDistance() {
+	return sensorMaxDistance;
+}
 
-//Map velocity into Variables
-
+//SETTERS
+//------------------------------------------------------
+void ofxRadarGlxRss3::setTrackingArea_leftUpCorner(ofPoint _point){
+	if (resumedPostData.trackingRegion.size() == 4) {
+		resumedPostData.trackingRegion[0] = ofPoint(_point.x*sensorWidth, _point.y*sensorHeight);
+	}
+}
+//------------------------------------------------------
+void ofxRadarGlxRss3::setTrackingArea_rightUpCorner(ofPoint _point) {
+	if (resumedPostData.trackingRegion.size() == 4) {
+		resumedPostData.trackingRegion[1] = ofPoint(_point.x*sensorWidth, _point.y*sensorHeight);
+	}
+}
+//------------------------------------------------------
+void ofxRadarGlxRss3::setTrackingArea_rightBottomCorner(ofPoint _point) {
+	if (resumedPostData.trackingRegion.size() == 4) {
+		resumedPostData.trackingRegion[2] = ofPoint(_point.x*sensorWidth, _point.y*sensorHeight);
+	}
+}
+//------------------------------------------------------
+void ofxRadarGlxRss3::setTrackingArea_leftBottomCorner(ofPoint _point) {
+	if (resumedPostData.trackingRegion.size() == 4) {
+		resumedPostData.trackingRegion[3] = ofPoint(_point.x*sensorWidth, _point.y*sensorHeight);
+	}
+}

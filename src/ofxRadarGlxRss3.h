@@ -7,16 +7,23 @@
 
 #define RECONNECTING_TIME 5000
 #define READABLE_FRAMERATE 200
+#define CIRCLE_BLOB_SIZE 4
+#define MIN_CIRCLE_STRENGHT_BLOB_SIZE 2
+#define MAX_CIRCLE_STRENGHT_BLOB_SIZE 13
+#define MIN_STRENGHT_DETECTED 2000000
+#define MAX_STRENGHT_DETECTED 20000000
+#define CIRCLE_CORNERS_TRACKINGAREA 4
 
 struct processedData {
 	int64_t id;
 	ofVec2f pos;
 	ofVec2f vel;
+	int speedKm;
 	int strength;
 };
 
 struct resumedTrackingData {
-	ofRectangle trackingRegion;
+	ofPolyline trackingRegion;
 	float density; //Density = NumberOfTargets*(sizeByUser or streght target) / (AreaTrackWidth + AreaTrackHeight) 
 	float average_vel;//average_vel = Sum(VelTargets[N])/N then ofMap(ResumedVelocity , -30, 30, 0, 1, )
 };
@@ -32,7 +39,7 @@ struct targetData {
 class ofxRadarGlxRss3 {
 public:
 	ofxRadarGlxRss3();
-    void setup();
+    void setup(string _ipRadar);
 	void update();
 	void updateOnlineRadarData();
     void draw();
@@ -46,28 +53,42 @@ public:
 	void startRecorging();
 	void stopRecorging();
 	
-	void setupRadar();
+	void setupRadar(string _ip);
 	void playSimFile(int _idPosFileInFolder);
 	int getNumSimFiles();
 	targetData getTargetData(int idTarget);
 	ofPoint getCartesianTargetData(int idTarget);
-	float sensorScale = 7.5;
+	float sensorScale = 2.5;
 
 	vector<processedData> radarPostData;
 	resumedTrackingData resumedPostData;
+	void setTrackingArea_leftUpCorner(ofPoint _point);
+	void setTrackingArea_leftBottomCorner(ofPoint _point);
+	void setTrackingArea_rightUpCorner(ofPoint _point);
+	void setTrackingArea_rightBottomCorner(ofPoint _point);
+
 	void playNextSimFile();
 	void playPrevSimFile();
+
+	float getRadarWidth();
+	float getRadarHeight();
+	float getRadarAccurateHeight();
+	float getRadarMaxDistance();
+	
 
 private:
 
 	bool parsingSuccessful = false;
 	void updateRadar();
 	void updateResumedData();
-
+	void resetAllTargetVars();
 	//Area Radar
 	void defineIdealRadarArea();
-	ofPolyline radarAreaEffective;
+	void defineRadarArea();
+	ofPolyline radarAreaEffective, radarArea;
 	void drawIdealAreaTracking(int x, int y);
+
+	void drawResumedPostData(int _x, int _y);
 
 	//Tracking Info
 	void drawSmallHorizontalLine(int _x, int _y);
@@ -89,28 +110,27 @@ private:
 	int timerReader = 0;
 	std::string url;
 	std::string textStatusRadar;
-
 	vector<targetData> targetsData;
 	std::string stargetResumedData;
 
 	//Radar Related Data
 	float sensorMaxDistance = 0;
-
+	string ipRadar = "";
 	float sensorHeight = 0;
 	float sensorWidth = 0;
 	float sensorAccurateHeight = 0;
+	float angleMaxRangeRadar = 80; //Seems to be 80, but accuarate data it's inside the 40 degrees...
 
-	int angleMaxRadar = 40;
 
-	//Save Load Simulation
-	string fileName = "default.json";
 
-	//write
+	//Record 
 	void updateRecording();
 	bool bRecording = false;
 	bool bStartRecording = false;
 	int framesRecorded = 0;
-	//read
+	//Player
+
+	string fileName = "default.json";	//Save Load Simulation
 	int idSimulaTorFile = 0;
 	bool bPlaying = false;
 	bool bStartPlaying= false;
