@@ -356,10 +356,10 @@ void ofxRadarGlxRss3::drawResumedPostData(int _x, int _y) {
 
 		ofPushStyle();
 		ofPushMatrix();
-		ofTranslate(_x - topRight.x, _y - bottomLeft.y, 0);
+		ofTranslate(_x + sensorWidth*0.5, _y + sensorHeight*0.5, 0);
 		//ofTranslate(_x, _y, 0);
 		ofScale(sensorScale, sensorScale, 0);
-		ofTranslate(+topRight.x, +bottomLeft.y, 0);
+		ofTranslate(-sensorWidth*0.5, -sensorHeight*0.5, 0);
 
 		ofSetColor(ofColor::limeGreen);
 		ofNoFill();
