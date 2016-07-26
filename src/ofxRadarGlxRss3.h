@@ -17,7 +17,8 @@
 struct processedData {
 	int64_t id;
 	ofVec2f pos;
-	//ofVec2f vel;
+	ofVec2f normPos;
+	bool bTracking;
 	int speedKm;
 	int strength;
 };
@@ -34,6 +35,33 @@ struct targetData {
 	int angleDegree; //Neg values (left), Positive values (right)
 	int speedKm;
 	int strength;
+};
+
+class ofxQuadHomography {
+
+public:
+
+	vector<ofPoint> inPoints; //Input points to warp
+	vector<ofPoint> outPoints; //by homography to output points
+
+	void ofxQuadHomography::setInPoints(const vector<ofPoint>& _inPoints) {
+		inPoints.clear();
+		inPoints.insert(inPoints.end(), _inPoints.begin(), _inPoints.end());
+	}
+
+	void ofxQuadHomography::setOutPoints(const vector<ofPoint>& _outPoints) {
+		outPoints.clear();
+		outPoints.insert(outPoints.end(), _outPoints.begin(), _outPoints.end());
+	}
+	
+	//--------------------------------------------------------------
+	ofPoint ofxQuadHomography::getCorrespondenceHomografy(ofVec2f auxPoint) {
+		ofPoint destPoint;
+		//auto mat = findHomography(quad1, quad2);
+		//destPoint = auxPoint*mat
+		return destPoint;
+	}
+
 };
 
 class ofxRadarGlxRss3 {
@@ -78,6 +106,11 @@ public:
 
 private:
 
+	//Warping methods
+	ofxQuadHomography myHomography;
+
+	///////////////////////////////////////////
+	//Radar Functions
 	bool parsingSuccessful = false;
 	void updateRadar();
 	void updateResumedData();

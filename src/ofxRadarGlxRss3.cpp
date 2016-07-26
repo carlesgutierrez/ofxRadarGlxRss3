@@ -60,6 +60,7 @@ void ofxRadarGlxRss3::setupRadar(string _ip) {
 
 	resumedPostData.trackingRegion = ofPolyline(quadRadar);
 	//Rect set(-sensorWidth*0.5, -sensorHeight*0.5, sensorWidth, sensorHeight);
+	myHomography.setInPoints(quadRadar);
 
 	defineIdealRadarArea();
 	defineRadarArea();
@@ -78,6 +79,16 @@ void ofxRadarGlxRss3::updateResumedData() {
 		processedData newProcessedData;
 		newProcessedData.id = targetsData[i].id;
 		newProcessedData.pos = cartesianRadar[i];
+
+		//Calc a Basic and normalized postition inside the sensorDimension//TODO in tracking area defined
+		if (resumedPostData.trackingRegion.inside(newProcessedData.pos)) {
+			newProcessedData.bTracking = true;
+			newProcessedData.normPos = ofVec2f(newProcessedData.pos.x / sensorWidth, (newProcessedData.pos.y / sensorHeight));
+		}
+		else {
+			newProcessedData.bTracking = false;
+			newProcessedData.normPos = ofVec2f(-1, -1);
+		}
 
 		newProcessedData.strength = targetsData[i].strength;
 
@@ -402,7 +413,9 @@ void ofxRadarGlxRss3::drawBlobsCartesian(int _x, int _y) {
 		ofDrawBitmapString("x=" + ofToString(radarPostData[i].pos.x, 0), radarPostData[i].pos.x + 2, radarPostData[i].pos.y + 0);
 		ofDrawBitmapString("y=" + ofToString(radarPostData[i].pos.y, 0), radarPostData[i].pos.x + 2, radarPostData[i].pos.y + 5);
 		ofDrawBitmapString("id=" + ofToString(radarPostData[i].id, 0), radarPostData[i].pos.x + 2, radarPostData[i].pos.y + 10);
-		ofDrawBitmapString("id=" + ofToString(radarPostData[i].speedKm, 0), radarPostData[i].pos.x + 2, radarPostData[i].pos.y + 10);
+		ofDrawBitmapString("Speed=" + ofToString(radarPostData[i].speedKm, 0), radarPostData[i].pos.x + 2, radarPostData[i].pos.y + 15);
+		ofDrawBitmapString("NormX=" + ofToString(radarPostData[i].normPos.x, 3), radarPostData[i].pos.x + 2, radarPostData[i].pos.y + 20);
+		ofDrawBitmapString("NormY=" + ofToString(radarPostData[i].normPos.y, 3), radarPostData[i].pos.x + 2, radarPostData[i].pos.y + 25);
 		
 	}
 	ofDisableAlphaBlending();
