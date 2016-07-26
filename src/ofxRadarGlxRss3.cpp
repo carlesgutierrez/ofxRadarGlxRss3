@@ -371,12 +371,19 @@ void ofxRadarGlxRss3::drawResumedPostData(int _x, int _y) {
 		ofScale(sensorScale, sensorScale, 0);
 		ofTranslate(-sensorWidth*0.5, -sensorHeight*0.5, 0);
 
+		//Draw Circle Nodes
 		ofSetColor(ofColor::limeGreen);
 		ofNoFill();
 		ofDrawCircle(topLeft, CIRCLE_CORNERS_TRACKINGAREA);
 		ofDrawCircle(topRight, CIRCLE_CORNERS_TRACKINGAREA);
-		ofDrawCircle(bottomLeft, CIRCLE_CORNERS_TRACKINGAREA);
+		ofDrawCircle(bottomLeft, CIRCLE_CORNERS_TRACKINGAREA);	
 		ofDrawCircle(bottomRight, CIRCLE_CORNERS_TRACKINGAREA);
+		
+		//Node Lines
+		ofDrawLine(topLeft, topRight);
+		ofDrawLine(topRight, bottomRight);
+		ofDrawLine(bottomRight, bottomLeft);
+		ofDrawLine(bottomLeft, topLeft);
 
 		ofPopMatrix();
 		ofPopStyle();
