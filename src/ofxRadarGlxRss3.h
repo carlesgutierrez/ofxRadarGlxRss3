@@ -17,7 +17,7 @@
 struct processedData {
 	int64_t id;
 	ofVec2f pos;
-	ofVec2f vel;
+	//ofVec2f vel;
 	int speedKm;
 	int strength;
 };
@@ -99,7 +99,7 @@ private:
 	void drawBlobsCartesian(int x, int y);
 
 	void radarPolarToCartesian();
-	vector<ofVec2f> cartesianRadar, last_cartesianRadar;
+	vector<ofVec2f> cartesianRadar;
 	ofVec2f transformPolarToCartesian(float _distance, float _angleDegree);
 
 	void readJsonDataRadar();

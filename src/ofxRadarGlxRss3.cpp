@@ -72,17 +72,13 @@ void ofxRadarGlxRss3::setupRadar(string _ip) {
 void ofxRadarGlxRss3::updateResumedData() {
 
 	radarPostData.clear();
-	radarPostData.reserve(targetsData.size());
+	//radarPostData.reserve(targetsData.size());
 
 	for (int i = 0; i < targetsData.size(); i++) {
 		processedData newProcessedData;
 		newProcessedData.id = targetsData[i].id;
 		newProcessedData.pos = cartesianRadar[i];
 
-		//Vel is de direction vector = lasLoc - loc; 
-		if (last_cartesianRadar.size() > 0 && cartesianRadar.size() > 0) {
-			newProcessedData.vel = cartesianRadar[i] - last_cartesianRadar[i];
-		}
 		newProcessedData.strength = targetsData[i].strength;
 
 		newProcessedData.speedKm = targetsData[i].speedKm;
@@ -96,7 +92,7 @@ void ofxRadarGlxRss3::updateResumedData() {
 void ofxRadarGlxRss3::updateRadar() {
 	readJsonDataRadar();
 	radarPolarToCartesian();
-	if(last_cartesianRadar.size() >0)updateResumedData();
+	updateResumedData();
 }
 
 //------------------------------------------------
@@ -136,6 +132,9 @@ void ofxRadarGlxRss3::updateOnlineRadarData() {
 
 //------------------------------------------------
 void ofxRadarGlxRss3::parseJsonDataRadar() {
+	//Clear last frame data
+	jsonRadar.clear(); 
+
 	// Now parse the JSON
 	parsingSuccessful = jsonRadar.open(url);
 
@@ -174,7 +173,7 @@ void ofxRadarGlxRss3::readJsonDataRadar() {
 
 	if (jsonRadar["targets"].size() > 0) {
 
-		targetsData.reserve(jsonRadar["targets"].size());
+		//targetsData.reserve(jsonRadar["targets"].size());
 
 		for (Json::ArrayIndex i = 0; i < jsonRadar["targets"].size(); ++i) {
 
@@ -390,12 +389,6 @@ void ofxRadarGlxRss3::drawBlobsCartesian(int _x, int _y) {
 	ofSetColor(myBlobColor.r, myBlobColor.g, myBlobColor.b, 200);
 	for (int i = 0; i < radarPostData.size(); i++) {
 
-		//Draw Vel Vect
-		if (radarPostData.size() > 0) {
-			ofSetColor(ofColor::blueSteel);
-			ofDrawLine(radarPostData[i].pos, radarPostData[i].pos+radarPostData[i].vel*sensorScale); //Seems this is right engouh
-		}
-
 		ofSetColor(ofColor::deepSkyBlue);
 		ofDrawCircle(radarPostData[i].pos.x, radarPostData[i].pos.y, 5);
 
@@ -476,17 +469,10 @@ void ofxRadarGlxRss3::drawRawTextRadarInfo() {
 //-----------------------------------------------
 void ofxRadarGlxRss3::radarPolarToCartesian() {
 
-	//Mem last Frame
-	last_cartesianRadar.clear();
-	last_cartesianRadar.reserve(targetsData.size());
-	//update values
-	for (int i = 0; i < cartesianRadar.size(); i++) {
-		last_cartesianRadar.push_back(cartesianRadar[i]);
-	}
 
 	//Auto Clean cartesian if there is no new targetsData
 	cartesianRadar.clear();
-	cartesianRadar.reserve(targetsData.size());
+	//cartesianRadar.reserve(targetsData.size());
 
 	for (int i = 0; i < targetsData.size(); i++) {
 
@@ -640,7 +626,6 @@ void ofxRadarGlxRss3::resetAllTargetVars() {
 	targetsData.clear();
 	radarPostData.clear();
 	cartesianRadar.clear();
-	last_cartesianRadar.clear();
 }
 //------------------------------------------------------
 void ofxRadarGlxRss3::playSimFile(int _idPosFileInFolder) {
