@@ -19,15 +19,10 @@ void ofxRadarGlxRss3::setup(string _ip)
 }
 
 //------------------------------------------------
-void ofxRadarGlxRss3::setupRadar(string _ip) {
+void ofxRadarGlxRss3::resetRadarDims() {
 
-	ipRadar = _ip;
-	url = "http://"+ipRadar+"/scan_radars";
+	cout << "Reseting Radar with sensorMaxDistance = " << sensorMaxDistance << endl;
 
-	sensorMaxDistance = 150; //TODO program from from JSON Data Value
-	angleMaxRangeRadar = 80;//Seems that now can be 80. But only 40 effectively-
-	cout << "Radar Accurate Angle is = " << angleMaxRangeRadar*0.5 << " but the maximum angle detection is " << angleMaxRangeRadar << endl;
-	
 	//First Calc Max Values From Radar setup values
 	float auxX;
 	float auxY;
@@ -40,12 +35,9 @@ void ofxRadarGlxRss3::setupRadar(string _ip) {
 	float degreeRad2 = ofDegToRad(angleMaxRangeRadar*0.5);
 	auxX2 = sensorMaxDistance * cos(degreeRad2);
 	auxY2 = sensorMaxDistance * sin(degreeRad2);
-	
+
 	ofVec2f posYMaxAccurateAngle = ofVec2f(auxX, auxY);
 	ofVec2f posYMaximumAngle = ofVec2f(auxX2, auxY2);
-
-	//ofVec2f posYMaxAccurateAngle = transformPolarToCartesian(sensorMaxDistance, angleMaxRangeRadar*0.25);
-	//ofVec2f posYMaximumAngle = transformPolarToCartesian(sensorMaxDistance, angleMaxRangeRadar*0.5);
 
 	sensorHeight = posYMaximumAngle.y * 2; // posYMaximumAngle is only half upper of the radar 
 	sensorAccurateHeight = posYMaxAccurateAngle.y * 2; // posYMaxAccurateAngle is only half upper of the radar
@@ -56,17 +48,38 @@ void ofxRadarGlxRss3::setupRadar(string _ip) {
 	quadRadar.push_back(ofPoint(0, 0));
 	quadRadar.push_back(ofPoint(sensorWidth, 0));
 	quadRadar.push_back(ofPoint(sensorWidth, sensorHeight));
-	quadRadar.push_back(ofPoint(0,  sensorHeight));
+	quadRadar.push_back(ofPoint(0, sensorHeight));
 
+	resumedPostData.trackingRegion.clear();
 	resumedPostData.trackingRegion = ofPolyline(quadRadar);
 	//Rect set(-sensorWidth*0.5, -sensorHeight*0.5, sensorWidth, sensorHeight);
+	//myHomography.clear?
 	myHomography.setInPoints(quadRadar);
 
 	defineIdealRadarArea();
 	defineRadarArea();
+}
+
+//------------------------------------------------
+void ofxRadarGlxRss3::setupRadar(string _ip) {
+
+	ipRadar = _ip;
+	url = "http://"+ipRadar+"/scan_radars";
+
+	sensorMaxDistance = 22; //TODO program from from JSON Data Value //150
+	angleMaxRangeRadar = 80;//Seems that now can be 80. But only 40 effectively-
+	cout << "Radar Accurate Angle is = " << angleMaxRangeRadar*0.5 << " but the maximum angle detection is " << angleMaxRangeRadar << endl;
+	
+	resetRadarDims();//Require sensorMaxDistance and angleMaxRangeRadar
 
 	ofSetCircleResolution(40);
 
+}
+
+//---------------------------------------------------
+void ofxRadarGlxRss3::SetSensorMaxDistance(int _maxMeters) {
+	sensorMaxDistance = _maxMeters;
+	resetRadarDims();
 }
 
 //------------------------------------------------
@@ -271,7 +284,7 @@ void ofxRadarGlxRss3::draw()
 {
 	ofSetColor(ofColor::white);
 
-	drawRadarCross(ofGetWidth()*0.5, ofGetHeight()*0.5);
+	//drawRadarCross(ofGetWidth()*0.5, ofGetHeight()*0.5); //not working properly at 20m MaxDistance
 
 	if (parsingSuccessful) {
 
@@ -297,7 +310,7 @@ void ofxRadarGlxRss3::defineRadarArea() {
 	ofVec2f UpArc = transformPolarToCartesian(sensorMaxDistance, angleMaxRangeRadar*0.5);
 	ofVec2f DownArc = transformPolarToCartesian(sensorMaxDistance, -angleMaxRangeRadar*0.5);
 
-
+	radarArea.clear();
 	radarArea.addVertex(cornerPoint);
 	radarArea.addVertex(UpArc);
 	radarArea.addVertex(DownArc);
@@ -314,7 +327,7 @@ void ofxRadarGlxRss3::defineIdealRadarArea() {
 	ofVec2f UpArc = transformPolarToCartesian(sensorMaxDistance, angleMaxRangeRadar*0.25);
 	ofVec2f DownArc = transformPolarToCartesian(sensorMaxDistance, -angleMaxRangeRadar*0.25);
 
-
+	radarAreaEffective.clear();
 	radarAreaEffective.addVertex(cornerPoint);
 	radarAreaEffective.addVertex(UpArc);
 	radarAreaEffective.addVertex(DownArc);
@@ -408,22 +421,28 @@ void ofxRadarGlxRss3::drawBlobsCartesian(int _x, int _y) {
 	for (int i = 0; i < radarPostData.size(); i++) {
 
 		ofSetColor(ofColor::deepSkyBlue);
-		ofDrawCircle(radarPostData[i].pos.x, radarPostData[i].pos.y, 5);
+		ofDrawCircle(radarPostData[i].pos.x, radarPostData[i].pos.y, CIRCLE_BLOB_SIZE*(1/sensorScale));
 
 		//Map Strengt Into Out Circle Size no Fill
 		ofNoFill();
-		float strengCircleDim = ofMap(radarPostData[i].strength, MIN_STRENGHT_DETECTED, MAX_STRENGHT_DETECTED, MIN_CIRCLE_STRENGHT_BLOB_SIZE, MAX_CIRCLE_STRENGHT_BLOB_SIZE, true);
+		float strengCircleDim = ofMap(radarPostData[i].strength, MIN_STRENGHT_DETECTED, MAX_STRENGHT_DETECTED, MIN_CIRCLE_STRENGHT_BLOB_SIZE*(1 / sensorScale), MAX_CIRCLE_STRENGHT_BLOB_SIZE*(1 / sensorScale), true);
 		ofSetColor(ofColor::paleVioletRed);
 		ofDrawCircle(radarPostData[i].pos.x, radarPostData[i].pos.y, strengCircleDim);
 
 		ofSetColor(ofColor::white);
-		ofDrawBitmapString("x=" + ofToString(radarPostData[i].pos.x, 0), radarPostData[i].pos.x + 2, radarPostData[i].pos.y + 0);
-		ofDrawBitmapString("y=" + ofToString(radarPostData[i].pos.y, 0), radarPostData[i].pos.x + 2, radarPostData[i].pos.y + 5);
-		ofDrawBitmapString("id=" + ofToString(radarPostData[i].id, 0), radarPostData[i].pos.x + 2, radarPostData[i].pos.y + 10);
-		ofDrawBitmapString("Speed=" + ofToString(radarPostData[i].speedKm, 0), radarPostData[i].pos.x + 2, radarPostData[i].pos.y + 15);
-		ofDrawBitmapString("NormX=" + ofToString(radarPostData[i].normPos.x, 3), radarPostData[i].pos.x + 2, radarPostData[i].pos.y + 20);
-		ofDrawBitmapString("NormY=" + ofToString(radarPostData[i].normPos.y, 3), radarPostData[i].pos.x + 2, radarPostData[i].pos.y + 25);
-		
+																																						 // stats
+		stringstream str;
+		str << "id= " << ofToString(radarPostData[i].id, 0) << endl;
+		str << "posxy(" << ofToString(radarPostData[i].pos.x, 0);
+		str << "," << ofToString(radarPostData[i].pos.y, 0);
+		str << ") km= " << ofToString(radarPostData[i].speedKm, 0) << endl;
+		str << "Normxy(" << ofToString(radarPostData[i].normPos.x, 3);
+		str << "," << ofToString(radarPostData[i].normPos.y, 3);
+		str << ")";
+
+		ofSetColor(255);
+		ofDrawBitmapString(str.str(), radarPostData[i].pos.x + 2, radarPostData[i].pos.y);
+
 	}
 	ofDisableAlphaBlending();
 	ofPopMatrix();
@@ -451,7 +470,7 @@ void ofxRadarGlxRss3::drawRawTextRadarDetection() {
 //-----------------------------------------------
 void ofxRadarGlxRss3::drawRawTextRadarInfo() {
 
-	int marginRight = ofGetWidth() - 300;
+	int marginRight = ofGetWidth() - 400;
 	int marginLeft = 20;
 	////////////////////////////////////////////////
 	ofSetColor(ofColor::green);
@@ -475,11 +494,15 @@ void ofxRadarGlxRss3::drawRawTextRadarInfo() {
 		ofDrawBitmapString("Recording Radar.. Frame #" + ofToString(framesRecorded, 0), marginRight, 100);
 	}
 	else if (bPlaying) {
-		ofDrawBitmapString("Playing OffLine Radar " + fileName, marginRight, 80);
-		ofDrawBitmapString("Num FramesSimulation = " + ofToString(counterFramesSimulation, 0), marginRight, 100);
-		ofDrawBitmapString("Total Frames available = " + ofToString(jsonSimulationRadar.size(), 0), marginRight, 120);
-		ofDrawBitmapString("Press RightArrow for Next", marginRight, 150);
-		ofDrawBitmapString("Press LeftArrow for Previous", marginRight, 170);
+
+		stringstream str;
+		str << "Playing OffLine" << endl;
+		str << "fileName = " << fileName << endl;
+		str << "frame(" << ofToString(counterFramesSimulation, 0);
+		str << "/" << ofToString(jsonSimulationRadar.size(), 0) << ")" << endl;
+
+		ofSetColor(255);
+		ofDrawBitmapString(str.str(), marginRight, 80);
 	}
 
 
@@ -650,6 +673,7 @@ void ofxRadarGlxRss3::resetAllTargetVars() {
 //------------------------------------------------------
 void ofxRadarGlxRss3::playSimFile(int _idPosFileInFolder) {
 	myDataFolder.listDir("");
+	myDataFolder.allowExt("json");
 	myDataFolder.sort();
 
 	if (_idPosFileInFolder < myDataFolder.size() && _idPosFileInFolder > -1) {
@@ -698,6 +722,7 @@ void ofxRadarGlxRss3::playPrevSimFile() {
 //------------------------------------------------------
 int ofxRadarGlxRss3::getNumSimFiles() {
 	myDataFolder.listDir("");
+	myDataFolder.allowExt("json");
 	myDataFolder.sort(); // in linux the file system doesn't return file lists ordered in alphabetical order
 
 	//allocate the vector to have as many ofImages as files

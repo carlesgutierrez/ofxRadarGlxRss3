@@ -2,7 +2,7 @@
 
 //--------------------------------------------------------------
 void ofApp::setup(){
-	myRadar.setup("192.168.1.120");
+	myRadar.setup("192.168.10.101");
 	myGui.setup();
 	
 }
@@ -24,6 +24,34 @@ void ofApp::draw(){
 	static float upRight_Track[2] = { 1.0f, 0.f };
 	static float downLeft_Track[2] = { 0.f, 1.0f };
 	static float downRight_Track[2] = { 1.0f, 1.0f };
+	static int sensorMaxDistance = 22;
+	
+
+	ImGui::SliderFloat("Scale Visualization", &myRadar.sensorScale, 1, 100);
+
+	if (ImGui::SliderInt("Max Distance Radar", &sensorMaxDistance, 4, 150)) {
+		myRadar.SetSensorMaxDistance(sensorMaxDistance);
+	}
+
+	if (ImGui::Button("Radar/Simulation")) {
+		myRadar.startPlaying();
+	}
+
+	ImGui::SameLine();
+
+	if (ImGui::Button("next")) {
+		myRadar.playNextSimFile();
+	}
+
+	ImGui::SameLine();
+
+	if (ImGui::Button("prev")) {
+		myRadar.playPrevSimFile();
+	}
+	
+	ImGui::Separator();
+
+	ImGui::PushItemWidth(100);
 
 	if (ImGui::SliderFloat2("upLeft Track", upLeft_Track, 0, 1)) {
 		myRadar.setTrackingArea_leftUpCorner(ofPoint(upLeft_Track[0], upLeft_Track[1]));
@@ -37,6 +65,8 @@ void ofApp::draw(){
 	if (ImGui::SliderFloat2("downRight Track", downRight_Track, 0, 1)) {
 		myRadar.setTrackingArea_rightBottomCorner(ofPoint(downRight_Track[0], downRight_Track[1]));
 	}
+
+	ImGui::PopItemWidth();
 
 	myGui.end();
 }

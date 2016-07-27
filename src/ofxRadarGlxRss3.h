@@ -7,9 +7,9 @@
 
 #define RECONNECTING_TIME 5000
 #define READABLE_FRAMERATE 200
-#define CIRCLE_BLOB_SIZE 4
-#define MIN_CIRCLE_STRENGHT_BLOB_SIZE 2
-#define MAX_CIRCLE_STRENGHT_BLOB_SIZE 13
+#define CIRCLE_BLOB_SIZE 1
+#define MIN_CIRCLE_STRENGHT_BLOB_SIZE 1
+#define MAX_CIRCLE_STRENGHT_BLOB_SIZE 5
 #define MIN_STRENGHT_DETECTED 2000000
 #define MAX_STRENGHT_DETECTED 20000000
 #define CIRCLE_CORNERS_TRACKINGAREA 4
@@ -71,6 +71,8 @@ public:
 	void update();
 	void updateOnlineRadarData();
     void draw();
+	void resetRadarDims();
+
 	ofxJSONElement jsonRadar;
 	ofxJSONElement jsonRecordingRadar;
 	ofxJSONElement jsonSimulationRadar;
@@ -82,6 +84,7 @@ public:
 	void stopRecorging();
 	
 	void setupRadar(string _ip);
+	void SetSensorMaxDistance(int _maxMeters);
 	void playSimFile(int _idPosFileInFolder);
 	int getNumSimFiles();
 	targetData getTargetData(int idTarget);
